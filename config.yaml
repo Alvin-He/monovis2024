@@ -1,0 +1,58 @@
+######################
+### Program Config ###
+######################
+monovis:
+  enabled: True
+  debugging: True
+  modules:
+    poseEstimation: True # enable pose estimation with apriiltags
+    apriltagTracking: True # enable individual apriltag tracking (adds apriltag info on to network tables)
+    gamePieceTracking: False # enable game piece tracking
+    robotTracking: False # enable robot tracking
+
+
+#####################
+### Camera Config ###
+#####################
+
+#define all cameras
+cameras: 
+  ## example (all fields must exist):
+  # name:
+  #   enabled: False
+  #   camID: 0 
+  # mountPos: # mounting position of the camera relative to 0,0 and front of robo
+  #   x: 0 
+  #   y: 0
+  #   yaw: 0 
+  test:
+    enabled: True
+    camID: 0
+    mountPos: 
+      x: 0 
+      y: 0
+      yaw: 0 
+  intake: 
+    enabled: False
+    camID: 1
+    mountPos: 
+      x: 0 
+      y: 0
+      yaw: 0 
+
+######################
+### Communications ###
+######################
+networktable:
+  ntVersion: 3 # have to be nt3, other wise the server will error
+  serverAddr: '10.46.69.2:' #normally ip of rio or the computer running outline viewer server
+  poseTablePath: 'SmartDashboard/VisionServer/Pose'
+  tagTrackingTablePath: 'SmartDashboard/VisionServer/Tag'
+  gamePieceTrackingTablePath: 'SmartDashboard/VisionServer/GamePieces'
+  robotTrackingTablePath: 'SmartDashboard/VisionServer/Robots'
+
+web:
+  listenAddr: '0.0.0.0:9090' # listen addr for web interface
+  clientBandwidthLimitMbps: 3.5 # frc max is 4, so leave 0.5mbs for networktables and things
+
+

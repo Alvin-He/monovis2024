@@ -1,0 +1,12 @@
+/target
+/cpp/boost_1_85_0
+/cpp/include/boost/** 
+
+.venv
+build
+bin/
+
+*.pyc
+*.tar.gz
+*.biz
+*.gz
