@@ -20,8 +20,8 @@
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c17",
-            "cppStandard": "gnu++17",
+            "cStandard": "c23",
+            "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],

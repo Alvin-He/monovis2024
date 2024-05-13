@@ -107,7 +107,7 @@ async def connection_handler(reader: asyncio.StreamReader, writer: asyncio.Strea
 
 async def main(): 
     print("Programing starting")
-    reader, writer = await asyncio.open_connection("127.0.0.50", "8080", limit=1) #50mb buffer limit
+    reader, writer = await asyncio.open_connection("127.0.0.1", "8090", limit=1) #50mb buffer limit
     await connection_handler(reader, writer)
     
     

@@ -3,9 +3,12 @@
 #include <iostream>
 #include <time.h>
 #include <boost/asio.hpp>
+
 #include <deque> 
 
 using boost::asio::ip::tcp; 
+
+#define BOOST_DEBUG
 
 typedef std::shared_ptr<std::vector<uint8_t>> t_CameraFrame; 
 
@@ -35,8 +38,9 @@ class CameraTransportProtocol {
 		CameraDataFrames m_dataFrames {0}; 
 		double m_lastMessageBytePosition = 0; 
 		bool m_inFrameTransport = false; 
-		boost::asio::mutable_buffer m_frameBuf; 
-		boost::asio::mutable_buffer chunkBuffer = boost::asio::mutable_buffer(&std::vector<std::byte>(5000), 5000); 
+		// boost::asio::mutable_buffer m_frameBuf; 
+		std::vector<char> m_chunkBuffer = std::vector<char>(5000); 
+		// boost::asio::mutable_buffer m_chunkBufferMut {&m_chunkBuffer, 5000}; 
 
 		int m_camID = 0; 
 		double m_frameSize[2] = {0,0};
@@ -49,16 +53,23 @@ class CameraTransportProtocol {
 	};
 
 	void HandleConnection(std::shared_ptr<tcp::socket> socket) {
-		boost::asio::async_read(socket, chunkBuffer, [this, socket] (const boost::system::error_code& error, size_t bytesTransfered) {
-			if (error.failed()) return; // stop reading if connection is closed or we have an error
-			DataReceived();
-			HandleConnection(socket);
-		});
+		// socket->async_read_some()
 	}
 
 	void DataReceived() {
-		
-		
+		if (m_inFrameTransport) {
+			return;	
+		}
+
+		// |-HEADER-									  -|-BODY-									-|    
+		// 1byte			2bytes			2byte		   	xbit
+		// camId		 	frame width	 	frame height	frame data(width*height amount of bits)
+		// uint8			uint16			uint16		  	x of uint8
+
+		// m_camID = *(int*)m_chunkBuffer.data(); 
+		// m_frameSize[0] = reinterpret_cast<uint16_t>(m_chunkBuffer.data()+1);
+		// m_frameSize[1] = reinterpret_cast<uint16_t>(m_chunkBuffer.data()+3); 
+		// printf("%d, %d, %d", m_camID, m_frameSize[0], m_frameSize[1]); 
 	}; 
 
 }; 
@@ -67,7 +78,6 @@ class CameraTransportProtocol {
 void CompletionHandler(const boost::system::error_code& error, size_t bytesTransfered) {
 	printf("A write have been completed with error %s\r\n", error.message()); 
 }
-
 int main(int argc, char const *argv[])
 {
 	printf("Control Server Starting\n");
