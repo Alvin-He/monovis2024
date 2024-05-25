@@ -1,6 +1,7 @@
 /target
 /cpp/boost_1_85_0
 /cpp/include/boost/** 
+/opencv
 
 .venv
 build
@@ -10,4 +11,6 @@ bin/
 *.tar.gz
 *.biz
 *.gz
+*.log
+
 cpp/libs/boost

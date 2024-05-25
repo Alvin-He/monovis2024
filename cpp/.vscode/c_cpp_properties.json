@@ -3,7 +3,9 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/local/include/**",
+                "/usr/include/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
@@ -15,14 +17,27 @@
         {
             "name": "monovis",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/include/*"
+                "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/**",
+                "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/include/*",
+                "/usr/include/**",
+                "/usr/local/include/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c23",
             "cppStandard": "c++20",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerPathInCppPropertiesJson": "/usr/bin/gcc",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/**",
+                    "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/include/*",
+                    "/usr/include/**",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4

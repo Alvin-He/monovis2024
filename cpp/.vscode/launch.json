@@ -1,6 +1,31 @@
 {
     "configurations": [
-        
+
+        {
+            "name": "(gdb) Core dump",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${input:selectProgram}",
+            "coreDumpPath": "${input:coreDumpFileName}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
 
         {
             "name": "(gdb) Launch serverAsync",
@@ -25,6 +50,32 @@
                     "ignoreFailures": true
                 }
             ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "selectProgram",
+            "type": "command",
+            "command": "extension.commandvariable.file.pickFile", 
+            
+            "args": {
+                "description": "Pick a program file",
+                "include": "*",
+                "fromFolder": {
+                    "predefined": ["${workspaceFolder}/build"]
+                }
+            } 
+        }, 
+        {
+            "id": "coreDumpFileName",
+            "type": "command",
+            "command": "extension.commandvariable.file.pickFile", 
+            "args": {
+                "description": "Pick a core dump file", 
+                "fromFolder": {
+                    "predefined": ["/var/crash"]
+                }
+            } 
         }
     ],
     "version": "2.0.0"
