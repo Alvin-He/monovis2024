@@ -140,7 +140,7 @@ class CameraTransportProtocol {
 			{
 			cv::Mat image{(int)m_frameSize[1], (int)m_frameSize[0], CV_8UC3, m_dataFrames.get()->data()};
 			cv::imshow("got", image);
-			cv::pollKey();
+			cv::waitKey(1);
 			}
 			catch( cv::Exception& e )
 			{
