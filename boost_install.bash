@@ -7,8 +7,8 @@ cd $WS_DIR
 set -ex 
 
 cd ./cpp
-mkdir include
-mkdir libs
+mkdir -p include
+mkdir -p libs
 
 cd $BOOST_HEADER_DIR
 

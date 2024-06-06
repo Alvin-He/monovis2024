@@ -8,7 +8,7 @@ project(
 # set( CMAKE_VERBOSE_MAKEFILE on )
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_link_options("-fuse-ld=lld")
+#add_link_options("-fuse-ld=lld")
 set(CUDAToolkit_ROOT /usr/local/cuda)
 
 include_directories(
