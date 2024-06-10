@@ -21,6 +21,8 @@ link_libraries(fmt)
 
 add_library(boost_cobalt STATIC IMPORTED)
 set_property(TARGET boost_cobalt PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_cobalt.a)
+add_library(boost_timer STATIC IMPORTED)
+set_property(TARGET boost_timer PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_timer.a)
 
 find_package(OpenCV REQUIRED 
 	# PATHS ${CMAKE_SOURCE_DIR}/../bin/opencv/lib/cmake/opencv4/
@@ -59,4 +61,5 @@ target_link_libraries(prog
 	PRIVATE boost_cobalt
 	PRIVATE ${OpenCV_LIBS}
 	PRIVATE Threads::Threads
+	PRIVATE boost_timer
 )

@@ -14,7 +14,7 @@ cd $BOOST_HEADER_DIR
 
 echo "compiling boost with cobalt"
 sh ./bootstrap.sh
-./b2 link=static cxxstd=20 --with-cobalt
+./b2 link=static cxxstd=20
 
 # creating symlinks
 ln -s $(readlink -f "./stage/lib") "$(readlink -f "../libs")/boost"
