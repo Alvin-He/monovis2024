@@ -1,0 +1,4 @@
+[submodule "cpp/include/fmt"]
+	path = cpp/include/fmt
+	url = https://github.com/fmtlib/fmt.git
+	branch = 10.x
