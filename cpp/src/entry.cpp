@@ -65,7 +65,9 @@ cobalt::main co_main(int argc, char* argv[]) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);
         //     fmt::println("trans:{}", estimation.camToTagTvec); 
         // }
+        #ifdef GUI
         cv::waitKey(1);
+        #endif
     }
     
 
