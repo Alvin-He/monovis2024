@@ -20,12 +20,13 @@
                 "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/**",
                 "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/include/*",
                 "/usr/include/**",
-                "/usr/local/include/**"
+                "/usr/local/include/**",
+                "${workspaceFolder}/src"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c23",
-            "cppStandard": "c++20",
+            "cppStandard": "c++23",
             "intelliSenseMode": "linux-gcc-x64",
             "compilerPathInCppPropertiesJson": "/usr/bin/gcc",
             "mergeConfigurations": false,

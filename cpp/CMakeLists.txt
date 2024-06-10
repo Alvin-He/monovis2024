@@ -14,7 +14,10 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 include_directories(
 	"include/"
+	"src/"
 )
+add_subdirectory(include/fmt EXCLUDE_FROM_ALL)
+link_libraries(fmt)
 
 add_library(boost_cobalt STATIC IMPORTED)
 set_property(TARGET boost_cobalt PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_cobalt.a)
@@ -38,6 +41,21 @@ add_executable(serverAsync src/ServerAsync.cpp)
 target_compile_options(serverAsync 
 	PUBLIC "-fcoroutines")
 target_link_libraries(serverAsync 
+	PRIVATE boost_cobalt
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+)
+
+add_library(camera STATIC src/camera/camera.cpp)
+target_link_libraries(camera
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE boost_cobalt
+)
+
+add_executable(prog src/entry.cpp)
+target_compile_options(prog 
+	PUBLIC "-fcoroutines")
+target_link_libraries(prog
 	PRIVATE boost_cobalt
 	PRIVATE ${OpenCV_LIBS}
 	PRIVATE Threads::Threads
