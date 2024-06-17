@@ -62,7 +62,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
         robotTracking.Update(res);
-        // fmt::println("time used:{}ms", timer.elapsed().wall/1000000); 
+        fmt::println("time used:{}ms", timer.elapsed().wall/1000000); 
         // for (Apriltag::EstimationResult estimation : res) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);
         //     fmt::println("trans:{}", estimation.camToTagTvec); 
