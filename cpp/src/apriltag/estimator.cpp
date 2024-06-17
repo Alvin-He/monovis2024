@@ -37,7 +37,8 @@ typedef std::vector<EstimationResult> AllEstimationResults;
 class Estimator {
     public:
         Estimator(): 
-            m_detector(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11)) 
+            // m_detector(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11)) 
+            m_dictionary(std::make_shared<cv::aruco::Dictionary>(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11))) 
         {
             
         }; // Estimator
@@ -48,7 +49,8 @@ class Estimator {
             // detecting the tags in image
             std::vector<std::vector<cv::Point2f>> corners;
             std::vector<int> ids; 
-            this->m_detector.detectMarkers(image, corners, ids); 
+            cv::aruco::detectMarkers(image, this->m_dictionary, corners, ids);
+            // this->m_detector.detectMarkers(image, corners, ids); 
             
             #ifdef DEBUG
             cv::aruco::drawDetectedMarkers(image, corners, ids); 
@@ -93,7 +95,9 @@ class Estimator {
 
     private:
         CameraData m_cameraData; 
-        cv::aruco::ArucoDetector m_detector; 
+        // cv::aruco::ArucoDetector m_detector;
+        std::shared_ptr<cv::aruco::Dictionary> m_dictionary; 
+        // cv::aruco::Dictionary m_dictionary;  
         std::vector<cv::Point3f> m_objectPoints = {
             {-4, 4, 0}, // every one is 33 mm
             { 4, 4, 0},
