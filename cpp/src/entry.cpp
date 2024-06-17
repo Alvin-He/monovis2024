@@ -55,7 +55,9 @@ cobalt::main co_main(int argc, char* argv[]) {
     {
         cv::Mat frame = co_await cameraReader; 
         frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
+        #ifdef GUI
         cv::imshow("test", frame);
+        #endif
         boost::timer::cpu_timer timer; 
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 

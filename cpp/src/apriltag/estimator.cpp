@@ -52,7 +52,7 @@ class Estimator {
             cv::aruco::detectMarkers(image, this->m_dictionary, corners, ids);
             // this->m_detector.detectMarkers(image, corners, ids); 
             
-            #ifdef DEBUG
+            #if defined(DEBUG) && defined(GUI)
             cv::aruco::drawDetectedMarkers(image, corners, ids); 
             cv::imshow("markers", image); 
             #endif
