@@ -25,7 +25,6 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CUDA_FAST_MATH=1 \
 -D WITH_CUBLAS=1 \
 -D WITH_CUDA=ON \
--D CUDA_ARCH_BIN=90 \
 -D BUILD_opencv_cudacodec=OFF \
 -D WITH_CUDNN=OFF \
 -D OPENCV_DNN_CUDA=OFF \
@@ -36,8 +35,9 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D OPENCV_GENERATE_PKGCONFIG=ON \
 -D OPENCV_PC_FILE_NAME=opencv.pc \
 -D OPENCV_ENABLE_NONFREE=ON \
--D OPENCV_PYTHON3_INSTALL_PATH=../../.venv/lib/python$PYTHON_VER/site-packages \
--D PYTHON_EXECUTABLE=../../.venv/bin/python3 \
+-D PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")  \
+-D PYTHON_LIBRARY=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
+-D OPENCV_PYTHON3_INSTALL_PATH=$(python3 -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
 -D OPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
@@ -80,5 +80,5 @@ fi
 
 if [[ $1 = "install" ]]; then
     make "-j$(nproc)"
-    make install
+    make install "-j$(nproc)"
 fi
