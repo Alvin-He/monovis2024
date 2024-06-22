@@ -7,10 +7,6 @@
 #include "camera/camera.cpp"
 #include "apriltag/apriltag.hpp"
 
-#include <fmt/include/fmt/ranges.h>
-#include <fmt/include/fmt/core.h>
-#include <fmt/include/fmt/std.h>
-
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 
@@ -47,14 +43,27 @@ cobalt::main co_main(int argc, char* argv[]) {
     // argument parsing
 
     Apriltag::World::World robotTracking {FIELD}; 
+    // deseralize camera calibration data
+    // cv::FileStorage cameraCalibData {"calibrationResults_1_0.498.xml", cv::FileStorage::READ}; 
+    cv::FileStorage cameraCalibData {"calibrationResults_2.xml", cv::FileStorage::READ}; 
+    cv::Mat matrix; 
+    cameraCalibData["cameraMatrix"] >> matrix;  
+    cv::Mat distCoeffs;
+    cameraCalibData["dist_coeffs"] >> distCoeffs; 
+    cameraCalibData.release(); 
+    Apriltag::CameraData cameraMainData = {
+        .matrix = std::move(matrix), 
+        .distCoeffs = std::move(distCoeffs)
+    }; 
+
     // start camera streams
     cv::VideoCapture cap{0}; 
     cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
-    Apriltag::Estimator estimator{}; 
+    Apriltag::Estimator estimator {cameraMainData}; 
     while (true)
     {
         cv::Mat frame = co_await cameraReader; 
-        frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
+        // frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
         #ifdef GUI
         cv::imshow("test", frame);
         #endif
@@ -62,7 +71,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
         robotTracking.Update(res);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000); 
+        // fmt::println("time used:{}ms", timer.elapsed().wall/1000000); 
         // for (Apriltag::EstimationResult estimation : res) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);
         //     fmt::println("trans:{}", estimation.camToTagTvec); 

@@ -14,14 +14,14 @@ constexpr double DEG2RAD_RATIO = CV_PI/180.0;
 // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf
 // or /docs/euler-angles
 // (x,y,z)
-cv::Mat1d rodRotMatToEuler(cv::Mat1d m) {
+cv::Mat rodRotMatToEuler(cv::Mat1d m) {
     double x = atan2(m[1][2], m[2][2]); 
     double c_2 = sqrt(pow(m[0][0],2) + pow(m[0][1],2));
     double y = atan2(-m[0][2], c_2); 
     double s_1 = sin(x);
     double c_1 = cos(x); 
     double z = atan2(s_1*m[2][0] - c_1 * m[1][0], c_1*m[1][1] - s_1*m[2][1]); 
-    return cv::Mat1d{3} << x, y, z; 
+    return cv::Mat(cv::Matx<double, 1, 3> {x, y, z}); 
 }
 
 std::vector<double> rotatePoint(double x, double y, double theta) {

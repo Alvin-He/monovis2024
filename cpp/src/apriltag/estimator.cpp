@@ -5,6 +5,7 @@
 #include <opencv4/opencv2/opencv.hpp>
 #include "helpers.cpp"
 
+namespace Apriltag {
 struct CameraData {
   int id = 0; 
   bool apriltags = true;
@@ -25,7 +26,6 @@ struct CameraData {
     // {{-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398}};
 };
 
-namespace Apriltag {
 struct EstimationResult {
     const CameraData& cameraInfo; 
     int id; 
@@ -36,7 +36,8 @@ typedef std::vector<EstimationResult> AllEstimationResults;
 
 class Estimator {
     public:
-        Estimator(): 
+        Estimator(CameraData cameraData): 
+            m_cameraData(std::move(cameraData)), 
             // m_detector(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11)) 
             m_dictionary(std::make_shared<cv::aruco::Dictionary>(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11))) 
         {
@@ -73,15 +74,15 @@ class Estimator {
                 // math
                 cv::Mat1d rmat; 
                 cv::Rodrigues(rvec, rmat); 
-                cv::Mat1d theta = rad2deg(rmat.row(0));
+                cv::Mat1d theta = rad2deg(rodRotMatToEuler(rmat));
 
-                cv::Mat1d rmat0T; 
-                cv::transpose(rmat.row(0),rmat0T);
-                cv::Mat1d pmat = (-rmat0T).mul(tvec); // element wise mutiplication of negated rmat row 0
+                cv::Mat1d rmatT; 
+                cv::transpose(rmat,rmatT);
+                cv::Mat1d pmat = (rmatT * tvec) * -1; // element wise mutiplication of negated rmat row 0
                 pmat.reshape(1); //flatten
                 pmat *= APRILTAG_BLOCK_SIZE_cm;
                 
-                 
+                fmt::println("{}\n{}", pmat, theta); 
                 estimations.push_back(EstimationResult {
                     .cameraInfo = m_cameraData,
                     .id = ids[i],
