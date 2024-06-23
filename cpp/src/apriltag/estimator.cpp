@@ -74,7 +74,7 @@ class Estimator {
                 // math
                 cv::Mat1d rmat; 
                 cv::Rodrigues(rvec, rmat); 
-                cv::Mat1d theta = rad2deg(rodRotMatToEuler(rmat));
+                cv::Mat1d theta = h::rad2deg(h::rodRotMatToEuler(rmat));
 
                 cv::Mat1d rmatT; 
                 cv::transpose(rmat,rmatT);

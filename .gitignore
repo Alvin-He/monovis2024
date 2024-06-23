@@ -1,16 +1,17 @@
 /target
 /cpp/boost_1_85_0
 /cpp/include/boost/** 
+/cpp/include/ntcore/**
 /opencv
 
 .venv
 build
 bin/
 
-*.pyc
-*.tar.gz
-*.biz
-*.gz
 *.log
+*.tar.gz
+*.gz
+*.biz
+*__pycache__
 
 cpp/libs/boost

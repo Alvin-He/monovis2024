@@ -24,6 +24,7 @@ set_property(TARGET boost_cobalt PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/
 add_library(boost_timer STATIC IMPORTED)
 set_property(TARGET boost_timer PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_timer.a)
 
+find_package (Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED 
 	# PATHS ${CMAKE_SOURCE_DIR}/../bin/opencv/lib/cmake/opencv4/
 	)
@@ -62,4 +63,5 @@ target_link_libraries(prog
 	PRIVATE ${OpenCV_LIBS}
 	PRIVATE Threads::Threads
 	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
 )

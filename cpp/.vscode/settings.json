@@ -90,6 +90,7 @@
 		"valarray": "cpp",
 		"variant": "cpp",
 		"__nullptr": "cpp",
-		"format": "cpp"
+		"format": "cpp",
+		"dense": "cpp"
 	}
 }
