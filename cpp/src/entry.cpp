@@ -4,6 +4,7 @@
 #include <boost/cobalt.hpp>
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/program_options.hpp>
 #include "camera/camera.cpp"
 #include "apriltag/apriltag.hpp"
 #include "network/publishers.cpp"
@@ -13,6 +14,7 @@
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
+namespace PO = boost::program_options;
 
 cv::Size2d PROC_FRAME_SIZE(640, 480);
 
@@ -41,13 +43,40 @@ Apriltag::World::WorldInfo FIELD {
     },
 };
 
-cobalt::main co_main(int argc, char* argv[]) {
-    printf("Booting up\n"); 
-    
+cobalt::main co_main(int argc, char* argv[]) {    
     // argument parsing
+    std::string ntServerIP; 
+    int cameraID; 
+    std::string cameraCalibrationFilePath;
+
+    PO::options_description cliOptions("Command Line Arguments");
+    cliOptions.add_options()
+        ("help", "show help message")
+        ("nt-ip,S", 
+            PO::value<std::string>(&ntServerIP)
+            ->default_value("127.0.0.1"), 
+            "networktables server ip address")
+        ("camera-id,I", 
+            PO::value<int>(&cameraID)
+            ->default_value(0),
+            "camera ID")
+        ("camera-calibration-file,CCF",
+            PO::value<std::string>(&cameraCalibrationFilePath)
+            ->default_value("calibrationResults_2.xml"), 
+            "camera calibration file path")
+    ;
+    PO::variables_map cliArgMap; 
+    PO::store(PO::command_line_parser(argc, argv).options(cliOptions).run(), cliArgMap); 
+    PO::notify(cliArgMap); 
+
+    if (cliArgMap.contains("help")) {
+        std::cout << cliOptions << std::endl;
+        co_return 1; 
+    } 
+
     nt::NetworkTableInstance ntInst = nt::NetworkTableInstance::GetDefault();
-    ntInst.StartClient4("JetsonNano@FRC4669"); 
-    ntInst.SetServer("127.0.0.1", 5810);
+    ntInst.StartClient4("monovis"); 
+    ntInst.SetServer(ntServerIP.c_str(), 5810);
     auto appNetworkTable = ntInst.GetTable("SmartDashboard")->GetSubTable("Vision");
     auto robotPosTable = appNetworkTable->GetSubTable("RobotPos"); 
     auto apriltagGroupTable = appNetworkTable->GetSubTable("Apriltags"); 
@@ -57,7 +86,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     Apriltag::World::World robotTracking {FIELD}; 
     // deseralize camera calibration data
     // cv::FileStorage cameraCalibData {"calibrationResults_1_0.498.xml", cv::FileStorage::READ}; 
-    cv::FileStorage cameraCalibData {"calibrationResults_2.xml", cv::FileStorage::READ}; 
+    cv::FileStorage cameraCalibData {cameraCalibrationFilePath, cv::FileStorage::READ}; 
     cv::Mat matrix; 
     cameraCalibData["cameraMatrix"] >> matrix;  
     cv::Mat distCoeffs;
@@ -69,7 +98,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     }; 
 
     // start camera streams
-    cv::VideoCapture cap{0}; 
+    cv::VideoCapture cap{cameraID}; 
     cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
     Apriltag::Estimator estimator {cameraMainData}; 
     while (true)

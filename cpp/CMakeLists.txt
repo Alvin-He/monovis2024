@@ -30,6 +30,8 @@ add_library(boost_cobalt STATIC IMPORTED)
 set_property(TARGET boost_cobalt PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_cobalt.a)
 add_library(boost_timer STATIC IMPORTED)
 set_property(TARGET boost_timer PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_timer.a)
+add_library(boost_program_options STATIC IMPORTED)
+set_property(TARGET boost_program_options PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_program_options.a)
 
 find_package (Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED 
@@ -38,36 +40,12 @@ find_package(OpenCV REQUIRED
 find_package(Threads REQUIRED)
 find_package(ntcore REQUIRED)
 
-add_executable(server src/Server.cpp)
-
-add_executable(cameraReader src/CameraReader.cpp)
-target_compile_options(cameraReader 
-	PUBLIC "-fcoroutines")
-target_link_libraries(cameraReader 
-	PRIVATE ${OpenCV_LIBS}
-	PRIVATE boost_cobalt
-	PRIVATE Threads::Threads)
-
-add_executable(serverAsync src/ServerAsync.cpp)
-target_compile_options(serverAsync 
-	PUBLIC "-fcoroutines")
-target_link_libraries(serverAsync 
-	PRIVATE boost_cobalt
-	PRIVATE ${OpenCV_LIBS}
-	PRIVATE Threads::Threads
-)
-
-add_library(camera STATIC src/camera/camera.cpp)
-target_link_libraries(camera
-	PRIVATE ${OpenCV_LIBS}
-	PRIVATE boost_cobalt
-)
-
 add_executable(prog src/entry.cpp)
 target_compile_options(prog 
 	PUBLIC "-fcoroutines")
 target_link_libraries(prog
 	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
 	PRIVATE ${OpenCV_LIBS}
 	PRIVATE Threads::Threads
 	PRIVATE boost_timer

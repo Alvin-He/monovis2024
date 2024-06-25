@@ -1,6 +1,7 @@
 #! /bin/bash
+NTCORE_INSTALL_PATH="/usr/local/ntcore"
 
-echo "build & install script for ntcore and WPILIB dev tools, installing to /usr/local/ntcore."
+echo "build & install script for ntcore and WPILIB dev tools, installing to $NTCORE_INSTALL_PATH."
 if [[ $1 == "release" ]]; then 
     echo "Building Release, Call this script with \`./install_ntcore.bash debug\` to build debug version."
 elif [[ $1 == "debug" ]]; then
@@ -19,9 +20,20 @@ echo "Made by @Alvin-He for FRC4669 - Galileo Robotics, target allwpilib version
 echo " "
 echo " "
 
+if [[ ! -z $(pgrep -l code) ]]; then 
+    echo "VSCODE is running, please close any VSCODE processes before running this script."
+    echo "VSCODE is known to crash pretty high spec computers when this script is running for some unknown reason."
+    echo "Exiting, nothing done due to VSCODE active."
+    exit 1
+fi
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd $SCRIPT_DIR
 set -ex
+
+echo "installing script dependencies"
+# also serves as a sudo check
+sudo apt install patchelf -y
 
 # fixes git safety checks https://stackoverflow.com/a/71904131
 git config --global --add safe.directory '*'
@@ -40,7 +52,7 @@ cd allwpilib
 
 if [[ -d "./build" ]]; then 
     echo "removing old cmake build directory"
-    rm -r ./build
+    rm -r -v ./build
 fi
 
 echo "installing build-essential and protobuf dependency"
@@ -62,7 +74,7 @@ $CMAKE_PATH \
 -D WITH_GUI=OFF \
 -D WITH_SIMULATION_MODULES=OFF \
 -D WITH_NTCORE=ON \
--D CMAKE_INSTALL_PREFIX=/usr/local/ntcore \
+-D CMAKE_INSTALL_PREFIX=$NTCORE_INSTALL_PATH \
 -S . -B ./build
 
 echo "building"
@@ -88,7 +100,7 @@ if [[ $2 == "devtools" ]]; then
     -D WITH_GUI=ON \
     -D WITH_SIMULATION_MODULES=OFF \
     -D WITH_NTCORE=ON \
-    -D CMAKE_INSTALL_PREFIX=/usr/local/ntcore \
+    -D CMAKE_INSTALL_PREFIX=$NTCORE_INSTALL_PATH \
     -S . -B ./build
 
     # building one of the dev tools just builds everything
@@ -98,16 +110,26 @@ fi
 cd ./build
 make install -j $(nproc)
 if [[ $2 == "devtools" ]]; then 
-    if [[ -d "/usr/local/ntcore/bin/" ]]; then 
-        rm -r /usr/local/ntcore/bin/
+    if [[ -d "$NTCORE_INSTALL_PATH/bin/" ]]; then 
+        echo "removing old binaries"
+        rm -r -v "$NTCORE_INSTALL_PATH/bin/"
     fi
-    mv ./bin/ /usr/local/ntcore/bin/
+    echo "patching binaries"
+    for file in "./bin"/*
+    do
+        patchelf --debug --set-rpath $NTCORE_INSTALL_PATH/lib $file 
+    done
+    mv -v ./bin/ "$NTCORE_INSTALL_PATH/bin/"
+
+    echo "moving additional .so files"
+    cp -v ./lib/libfieldImages.so $NTCORE_INSTALL_PATH/lib/
+    cp -v ./lib/libimgui.so $NTCORE_INSTALL_PATH/lib/
 fi
 set +x
 printf "\n\n\nFinished, you may delete $SCRIPT_DIR/allwpilib if you want to save space.\n"
-printf "ntcore is installed at /usr/local/ntcore\n"
+printf "ntcore is installed at $NTCORE_INSTALL_PATH\n"
 printf "\nAdd this to your CMakeLists.txt to use ntcore:\n
-set(NTCORE_INSTALL_PATH /usr/local/ntcore)
+set(NTCORE_INSTALL_PATH $NTCORE_INSTALL_PATH)
 set(ntcore_DIR \${NTCORE_INSTALL_PATH}/share/ntcore)
 set(wpiutil_DIR \${NTCORE_INSTALL_PATH}/share/wpiutil)
 set(wpinet_DIR \${NTCORE_INSTALL_PATH}/share/wpinet)
@@ -117,7 +139,7 @@ printf "NOTE:DO NOT find_package(wpilib), the wpilib package file is broken due 
 
 if [[ $2 == "devtools" ]]; then 
 printf "\n\n"
-printf "WPILIB Tools installed at /usr/local/ntcore/bin, You may add this directory to PATH for ease of access. \n\n"
+printf "WPILIB Tools installed at $NTCORE_INSTALL_PATH/bin, You may add this directory to PATH for ease of access. \n\n"
 fi
 
 printf "Read this if you encounter any problems: https://github.com/wpilibsuite/allwpilib/blob/v2024.3.2/README-CMAKE.md \n"

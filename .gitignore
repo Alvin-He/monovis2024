@@ -4,8 +4,10 @@
 /cpp/include/ntcore/**
 /opencv
 
+
 .venv
 build
+allwpilib
 bin/
 
 *.log
