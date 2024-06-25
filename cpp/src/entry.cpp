@@ -6,6 +6,10 @@
 #include <boost/timer/timer.hpp>
 #include "camera/camera.cpp"
 #include "apriltag/apriltag.hpp"
+#include "network/publishers.cpp"
+
+#include "ntcore/networktables/NetworkTable.h"
+#include "ntcore/networktables/NetworkTableInstance.h"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -41,6 +45,14 @@ cobalt::main co_main(int argc, char* argv[]) {
     printf("Booting up\n"); 
     
     // argument parsing
+    nt::NetworkTableInstance ntInst = nt::NetworkTableInstance::GetDefault();
+    ntInst.StartClient4("JetsonNano@FRC4669"); 
+    ntInst.SetServer("127.0.0.1", 5810);
+    auto appNetworkTable = ntInst.GetTable("SmartDashboard")->GetSubTable("Vision");
+    auto robotPosTable = appNetworkTable->GetSubTable("RobotPos"); 
+    auto apriltagGroupTable = appNetworkTable->GetSubTable("Apriltags"); 
+
+    auto robotPosePublisher = Publishers::RobotPosePublisher(robotPosTable); 
 
     Apriltag::World::World robotTracking {FIELD}; 
     // deseralize camera calibration data
@@ -71,10 +83,11 @@ cobalt::main co_main(int argc, char* argv[]) {
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
         robotTracking.Update(res);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000); 
+        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
         fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
         fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
+        co_await robotPosePublisher(robotPose); 
 
         // for (Apriltag::EstimationResult estimation : res) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);

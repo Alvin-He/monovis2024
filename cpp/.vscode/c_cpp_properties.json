@@ -21,6 +21,7 @@
                 "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/include/*",
                 "/usr/include/**",
                 "/usr/local/include/**",
+                "/usr/local/ntcore/include/**",
                 "${workspaceFolder}/src"
             ],
             "defines": [],

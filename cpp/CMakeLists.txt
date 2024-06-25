@@ -12,6 +12,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CUDAToolkit_ROOT /usr/local/cuda)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+set(NTCORE_INSTALL_PATH /usr/local/ntcore)
+set(ntcore_DIR ${NTCORE_INSTALL_PATH}/share/ntcore)
+set(wpiutil_DIR ${NTCORE_INSTALL_PATH}/share/wpiutil)
+set(wpinet_DIR ${NTCORE_INSTALL_PATH}/share/wpinet)
+include_directories(SYSTEM ${NTCORE_INSTALL_PATH}/include)
+
+
 include_directories(
 	"include/"
 	"src/"
@@ -29,6 +36,7 @@ find_package(OpenCV REQUIRED
 	# PATHS ${CMAKE_SOURCE_DIR}/../bin/opencv/lib/cmake/opencv4/
 	)
 find_package(Threads REQUIRED)
+find_package(ntcore REQUIRED)
 
 add_executable(server src/Server.cpp)
 
@@ -64,4 +72,5 @@ target_link_libraries(prog
 	PRIVATE Threads::Threads
 	PRIVATE boost_timer
 	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
 )
