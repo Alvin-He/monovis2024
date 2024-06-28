@@ -57,7 +57,7 @@ fi
 
 echo "installing build-essential and protobuf dependency"
 sudo apt install build-essential -y
-sudo apt install protobuf-compiler -y
+sudo apt install protobuf-compiler libprotobuf-dev -y
 
 
 echo "configuring cmake"
