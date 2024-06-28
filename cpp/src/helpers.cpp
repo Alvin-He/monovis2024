@@ -41,7 +41,7 @@ cv::Mat rodRotMatToEuler(cv::Mat1d m) {
     double s_1 = sin(x);
     double c_1 = cos(x); 
     double z = atan2(s_1*m[2][0] - c_1 * m[1][0], c_1*m[1][1] - s_1*m[2][1]); 
-    return cv::Mat(cv::Matx<double, 1, 3> {x, y, z}); 
+    return cv::Mat(cv::Matx<double, 3, 1> {x, y, z}); 
 }
 
 // https://stackoverflow.com/a/45399188 #1.2 works pretty well to kick out more than ~5 cm of difference
@@ -91,7 +91,7 @@ cv::Mat rad2deg(cv::Mat src) {
 
 
 double NormalizeAngle(double s) {
-    return remainder(s, 360); 
+    return std::remainder(s, 360); 
 }
 
 };

@@ -129,9 +129,10 @@ class World {
             TagLocation tag = m_worldInfo.tags[res.id];
 
             double yaw; 
+            
             yaw = -(*res.camToTagRvec[1]); 
             yaw += res.cameraInfo.camToRobotPos[3] + tag.yaw; 
-            yaw = 180 - yaw; 
+            yaw = 180.0 - yaw; 
             yaw = h::NormalizeAngle(yaw);
             allPossibleYaw.push_back(yaw); 
 
@@ -141,7 +142,7 @@ class World {
             std::vector<double> robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
             
-            // fmt::println("cord: {}", robotCords);
+            fmt::println("yaw: {}", (double)*res.camToTagRvec[1]);
             fmt::println("distance: {}", std::sqrt(std::pow(robotCords[0], 2) + std::pow(robotCords[1], 2))); 
             allPossibleCords.push_back(RobotPose{
                 .x = robotCords[0],

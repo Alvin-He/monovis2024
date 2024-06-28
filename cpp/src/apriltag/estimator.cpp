@@ -79,10 +79,11 @@ class Estimator {
                 cv::Mat1d rmatT; 
                 cv::transpose(rmat,rmatT);
                 cv::Mat1d pmat = (rmatT * tvec) * -1; // element wise mutiplication of negated rmat row 0
-                pmat.reshape(1); //flatten
                 pmat *= APRILTAG_BLOCK_SIZE_cm;
                 
-                fmt::println("{}\n{}", pmat, theta); 
+                // pamt and theta is already flat for index access
+
+                fmt::println("Detection Result: {}\n{}", pmat, theta); 
                 estimations.push_back(EstimationResult {
                     .cameraInfo = m_cameraData,
                     .id = ids[i],
