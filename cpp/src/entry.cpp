@@ -16,7 +16,7 @@ namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 namespace PO = boost::program_options;
 
-cv::Size2d PROC_FRAME_SIZE(640, 480);
+cv::Size2d PROC_FRAME_SIZE (640, 480); 
 
 Apriltag::World::WorldInfo FIELD {
     .xTot = 1654, 
@@ -99,12 +99,19 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // start camera streams
     cv::VideoCapture cap{cameraID}; 
+
+    // adjust camera matrix for resized smaller image
+    cameraMainData.matrix(0, 0) *= (PROC_FRAME_SIZE.width / cap.get(cv::CAP_PROP_FRAME_WIDTH)); // fx
+    cameraMainData.matrix(0, 2) *= (PROC_FRAME_SIZE.width / cap.get(cv::CAP_PROP_FRAME_WIDTH)); // cx
+    cameraMainData.matrix(1, 1) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // fy
+    cameraMainData.matrix(1, 2) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // cy
+
     cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
     Apriltag::Estimator estimator {cameraMainData}; 
     while (true)
     {
         cv::Mat frame = co_await cameraReader; 
-        // frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
+        frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
         #ifdef GUI
         cv::imshow("test", frame);
         #endif
