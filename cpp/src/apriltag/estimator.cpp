@@ -83,7 +83,6 @@ class Estimator {
                 
                 // pamt and theta is already flat for index access
 
-                fmt::println("Detection Result: {}\n{}", pmat, theta); 
                 estimations.push_back(EstimationResult {
                     .cameraInfo = m_cameraData,
                     .id = ids[i],

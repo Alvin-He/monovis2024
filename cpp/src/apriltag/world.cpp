@@ -142,8 +142,8 @@ class World {
             std::vector<double> robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
             
-            fmt::println("yaw: {}", (double)*res.camToTagRvec[1]);
-            fmt::println("distance: {}", std::sqrt(std::pow(robotCords[0], 2) + std::pow(robotCords[1], 2))); 
+            // fmt::println("yaw: {}", (double)*res.camToTagRvec[1]);
+            // fmt::println("distance: {}", std::sqrt(std::pow(robotCords[0], 2) + std::pow(robotCords[1], 2))); 
             allPossibleCords.push_back(RobotPose{
                 .x = robotCords[0],
                 .y = robotCords[1], 
