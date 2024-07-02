@@ -6,8 +6,6 @@ WS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd $WS_DIR
 set -ex 
 
-source ./.venv/bin/activate
-
 echo "downloading opencv version $OPENCV_VERSION to ./opencv"
 wget -O opencv-$OPENCV_VERSION.zip https://github.com/opencv/opencv/archive/refs/heads/$OPENCV_VERSION.zip
 unzip opencv-$OPENCV_VERSION.zip

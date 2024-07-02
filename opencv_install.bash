@@ -1,12 +1,12 @@
 #! /bin/bash
 
 PYTHON_VER="3.12"
+source ./.venv/bin/activate
 
 WS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd $WS_DIR
 set -ex 
 
-source ./.venv/bin/activate
 # pip install numpy
 # ./opencv_get_dependencies.bash
 
@@ -25,7 +25,7 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CUDA_FAST_MATH=1 \
 -D WITH_CUBLAS=1 \
 -D WITH_CUDA=ON \
--D BUILD_opencv_cudacodec=OFF \
+-D BUILD_opencv_cudacodec=ON \
 -D WITH_CUDNN=OFF \
 -D OPENCV_DNN_CUDA=OFF \
 -D WITH_V4L=ON \
@@ -35,8 +35,8 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D OPENCV_GENERATE_PKGCONFIG=ON \
 -D OPENCV_PC_FILE_NAME=opencv.pc \
 -D OPENCV_ENABLE_NONFREE=ON \
--D PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")  \
--D PYTHON_LIBRARY=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
+-D PYTHON_INCLUDE_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))")  \
+-D PYTHON_LIBRARY=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
 -D OPENCV_PYTHON3_INSTALL_PATH=$(python3 -c "import sysconfig; print(sysconfig.get_paths()['purelib'])") \
 -D OPENCV_EXTRA_MODULES_PATH=../opencv_contrib/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
