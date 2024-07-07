@@ -1,6 +1,7 @@
 
 #include "global.cpp"
 #include "helpers.cpp"
+#include <csignal>
 #include <boost/cobalt.hpp>
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
@@ -43,6 +44,7 @@ Apriltag::World::WorldInfo FIELD {
     },
 };
 
+bool isFlagExit = false; 
 cobalt::main co_main(int argc, char* argv[]) {    
     // argument parsing
     std::string ntServerIP; 
@@ -62,7 +64,7 @@ cobalt::main co_main(int argc, char* argv[]) {
             "camera ID")
         ("camera-calibration-file,CCF",
             PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_2.xml"), 
+            ->default_value("calibrationResults_1.xml"), 
             "camera calibration file path")
     ;
     PO::variables_map cliArgMap; 
@@ -109,8 +111,13 @@ cobalt::main co_main(int argc, char* argv[]) {
     cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
     Apriltag::Estimator estimator {cameraMainData}; 
 
+    // signal handlers
+    std::signal(SIGINT, [](int i){ isFlagExit = true; }); 
+    std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
+    std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
+
     // main program loop
-    try { for(;;)
+    while (!isFlagExit)
     {   
         cv::Mat frame = co_await cameraReader; 
         frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
@@ -134,20 +141,15 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef GUI
         cv::waitKey(1);
         #endif
-    } } catch (std::exception& e) { // exit handling if the program is still running
-        std::printf("Exception: %s\n", e.what());
-
-        fmt::println("Exiting..."); 
-        ntInst.StopClient(); 
-        cap.release(); 
-        #ifdef GUI
-        cv::destroyAllWindows(); 
-        #endif
-        exit(0); 
-    };
+    }
     
-
-    // start processing tasks
+    // exit handling 
+    fmt::println("Exiting..."); 
+    ntInst.StopClient(); 
+    cap.release(); 
+    #ifdef GUI
+    cv::destroyAllWindows(); 
+    #endif
     
     co_return 0; 
 }
