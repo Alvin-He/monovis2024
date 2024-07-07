@@ -62,9 +62,9 @@ cobalt::main co_main(int argc, char* argv[]) {
             PO::value<int>(&cameraID)
             ->default_value(0),
             "camera ID")
-        ("camera-calibration-file,CCF",
+        ("camera-calibration-file,F",
             PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_1.xml"), 
+            ->default_value("calibrationResults_2.xml"), 
             "camera calibration file path")
     ;
     PO::variables_map cliArgMap; 
@@ -117,7 +117,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
 
     // main program loop
-    while (!isFlagExit)
+    try { while (!isFlagExit)
     {   
         cv::Mat frame = co_await cameraReader; 
         frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
@@ -141,7 +141,9 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef GUI
         cv::waitKey(1);
         #endif
-    }
+    } } catch (...) {
+        std::printf("Exception!"); 
+    };
     
     // exit handling 
     fmt::println("Exiting..."); 
