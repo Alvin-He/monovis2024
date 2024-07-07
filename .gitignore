@@ -17,3 +17,5 @@ bin/
 *__pycache__
 
 cpp/libs/boost
+cpp/include/boost
+cpp/cmake
