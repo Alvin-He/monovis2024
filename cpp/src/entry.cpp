@@ -108,8 +108,10 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
     Apriltag::Estimator estimator {cameraMainData}; 
-    while (true)
-    {
+
+    // main program loop
+    try { for(;;)
+    {   
         cv::Mat frame = co_await cameraReader; 
         frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
         #ifdef GUI
@@ -132,7 +134,17 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef GUI
         cv::waitKey(1);
         #endif
-    }
+    } } catch (std::exception& e) { // exit handling if the program is still running
+        std::printf("Exception: %s\n", e.what());
+
+        fmt::println("Exiting..."); 
+        ntInst.StopClient(); 
+        cap.release(); 
+        #ifdef GUI
+        cv::destroyAllWindows(); 
+        #endif
+        exit(0); 
+    };
     
 
     // start processing tasks
