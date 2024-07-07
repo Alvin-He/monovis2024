@@ -17,12 +17,12 @@
         {
             "name": "monovis",
             "includePath": [
-                "/usr/local/include/",
-                "/usr/local/include/opencv4/",
-                "/usr/include/eigen3/",
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include/**",
+                "/usr/include/**",
+                "/usr/local/include/**",
                 "/usr/local/ntcore/include/**",
-                "${workspaceFolder}/src/**",
-                "${workspaceFolder}/include/"
+                "${workspaceFolder}/src"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
