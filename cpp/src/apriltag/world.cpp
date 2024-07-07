@@ -126,6 +126,9 @@ class World {
         vector_d allPossibleYaw; 
 
         for (Apriltag::EstimationResult res : results) {
+            fmt::println("tvec: {}", res.camToTagTvec); 
+            fmt::println("rvev: {}", res.camToTagRvec); 
+
             TagLocation tag = m_worldInfo.tags[res.id];
 
             double yaw; 

@@ -128,9 +128,9 @@ cobalt::main co_main(int argc, char* argv[]) {
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
         robotTracking.Update(res);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
+        // fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
-        fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
+        // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
         fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
         co_await robotPosePublisher(robotPose); 
 
