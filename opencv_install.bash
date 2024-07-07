@@ -17,8 +17,8 @@ cd build
 # ../../bin/opencv 
 
 cmake -D CMAKE_BUILD_TYPE=RELEASE \
--D CMAKE_C_COMPILER=gcc-10 \
--D CMAKE_CXX_COMPILER=g++-10 \
+-D CMAKE_C_COMPILER=gcc \
+-D CMAKE_CXX_COMPILER=g++ \
 -D CMAKE_INSTALL_PREFIX=/usr/local \
 -D WITH_TBB=ON \
 -D ENABLE_FAST_MATH=1 \
