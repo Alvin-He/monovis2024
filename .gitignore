@@ -19,3 +19,4 @@ bin/
 cpp/libs/boost
 cpp/include/boost
 cpp/cmake
+cpp/src/dev_overwrite_global.cpp
