@@ -3,7 +3,7 @@
 #include <boost/cobalt.hpp>
 #include <algorithm>
 #include <Eigen/Dense>
-
+#include <cmath>
 // alialias
 namespace cobalt = boost::cobalt;
 
@@ -35,12 +35,12 @@ typename Derived::Scalar median( const Eigen::DenseBase<Derived>& d ){
 // or /docs/euler-angles
 // (x,y,z)
 cv::Mat rodRotMatToEuler(cv::Mat1d m) {
-    double x = atan2(m[1][2], m[2][2]); 
-    double c_2 = sqrt(pow(m[0][0],2) + pow(m[0][1],2));
-    double y = atan2(-m[0][2], c_2); 
-    double s_1 = sin(x);
-    double c_1 = cos(x); 
-    double z = atan2(s_1*m[2][0] - c_1 * m[1][0], c_1*m[1][1] - s_1*m[2][1]); 
+    double x = std::atan2(m[1][2], m[2][2]); 
+    double c_2 = std::sqrt(std::pow(m[0][0],2) + std::pow(m[0][1],2));
+    double y = std::atan2(-m[0][2], c_2); 
+    double s_1 = std::sin(x);
+    double c_1 = std::cos(x); 
+    double z = std::atan2(s_1*m[2][0] - c_1 * m[1][0], c_1*m[1][1] - s_1*m[2][1]); 
     return cv::Mat(cv::Matx<double, 3, 1> {x, y, z}); 
 }
 
@@ -79,9 +79,9 @@ double average(const vector_d& data) {
 
 std::vector<double> rotatePoint(double x, double y, double theta) {
     theta = theta * DEG2RAD_RATIO;
-    double r1 = sqrt(pow(x, 2) + pow(y, 2)); 
-    double xp1 = r1*cos(atan(y/x) + theta); 
-    double yp1 = r1*sin(atan(y/x) + theta); 
+    double r1 = std::sqrt(std::pow(x, 2) + std::pow(y, 2)); 
+    double xp1 = r1*std::cos(std::atan(y/x) + theta); 
+    double yp1 = r1*std::sin(std::atan(y/x) + theta); 
     return std::vector<double> {xp1, yp1}; 
 }  
 

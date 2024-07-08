@@ -7,6 +7,7 @@
 
 #include <fmt/include/fmt/ranges.h>
 #include <boost/math/distributions.hpp>
+#include <cmath>
 namespace Apriltag::World {
 
 // Storage container for individual Tag info

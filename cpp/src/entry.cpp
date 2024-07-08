@@ -64,7 +64,7 @@ cobalt::main co_main(int argc, char* argv[]) {
             "camera ID")
         ("camera-calibration-file,F",
             PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_2.xml"), 
+            ->default_value("calibrationResults_1.xml"), 
             "camera calibration file path")
     ;
     PO::variables_map cliArgMap; 
@@ -108,19 +108,50 @@ cobalt::main co_main(int argc, char* argv[]) {
     cameraMainData.matrix(1, 1) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // fy
     cameraMainData.matrix(1, 2) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // cy
 
-    cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap); 
-    Apriltag::Estimator estimator {cameraMainData}; 
+    cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap);
+
+    cv::aruco::DetectorParameters detectorParams;
+
+    // max smaller than 5 seems to work pretty well
+    detectorParams.adaptiveThreshWinSizeMin = 5; 
+    detectorParams.adaptiveThreshWinSizeMax = 5; 
+    // detectorParams.adaptiveThreshWinSizeStep = 5;
+
+    detectorParams.cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
+    // detectorParams.useAruco3Detection = true;
+
+    Apriltag::Estimator estimator {cameraMainData, detectorParams}; 
 
     // signal handlers
     std::signal(SIGINT, [](int i){ isFlagExit = true; }); 
     std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
     std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
 
+    int gaussianBlurKernal = 5; 
+    double gaussianBllueStdev = 0.8;
+    #ifdef GUI
+    std::string testWindow = "test"; 
+    cv::namedWindow(testWindow);
+
+    cv::createTrackbar("Gaussian Blur Kernal", testWindow, nullptr, 10, [](int pos, void* ori) { 
+        int* val = static_cast<int*>(ori); 
+        if (pos < 3) pos = 3; 
+        *val = ((pos % 2) == 0) ? (pos + 1) : pos;  
+    }, &gaussianBlurKernal); 
+    cv::createTrackbar("Gaussian Blur Stddev", testWindow, nullptr, 30, [](int pos, void* ori) { 
+        double* val = static_cast<double*>(ori); 
+        pos /= 10; 
+        *val = pos;
+    }, &gaussianBllueStdev); 
+    
+    #endif 
+
     // main program loop
-    try { while (!isFlagExit)
+    // try {
+    while (!isFlagExit)
     {   
         cv::Mat frame = co_await cameraReader; 
-        frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE); 
+        frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE);
         #ifdef GUI
         cv::imshow("test", frame);
         #endif
@@ -141,9 +172,10 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef GUI
         cv::waitKey(1);
         #endif
-    } } catch (...) {
-        std::printf("Exception!"); 
-    };
+    } 
+    // } catch (...) {
+    //     std::printf("Exception!"); 
+    // };
     
     // exit handling 
     fmt::println("Exiting..."); 
