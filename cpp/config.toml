@@ -1,0 +1,21 @@
+
+[Comms]
+  [Comms.NetworkTable]
+  server="10.42.0.1"
+
+[Camera]
+  id = 2
+  calibrationFile = "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/calibrationResults_2.xml"
+
+[Apriltag]
+  enabled = true
+
+  # default units inches and degress
+  csvFile = "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/2024-crescendo.csv" 
+  
+  # centimeters, (x, y)
+  fieldSize = [ 1654, 821 ]
+
+[PoseEstimation]
+  enabled = true
+
