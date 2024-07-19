@@ -11,7 +11,7 @@ def CommandGoToLocation(CNCTable: networktables.NetworkTable, x, y):
 
 if __name__ == "__main__":
     networktables.NetworkTables.initialize(const.NT_IP)
-    CNCTable = networktables.NetworkTables.getTable(const.CNC_TABLE_NAME)
+    CNCTable = networktables.NetworkTables.getTable("SmartDashboard").getSubTable(const.CNC_TABLE_NAME)
 
     print("send_cord_command in tty mode, press q or ctrl-c + enter to exit")
     while True:
