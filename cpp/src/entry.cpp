@@ -148,14 +148,17 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // main program loop
     // try {
+    int64_t serverTimeOffset = ntInst.GetServerTimeOffset().value_or(0); 
     while (!isFlagExit)
     {   
-        cv::Mat frame = co_await cameraReader; 
+        cv::Mat frame = co_await cameraReader;
+        int64_t frameTimeStamp = nt::Now() + serverTimeOffset;  
+        
         frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE);
         #ifdef GUI
         cv::imshow("test", frame);
         #endif
-        boost::timer::cpu_timer timer; 
+        boost::timer::cpu_timer timer;         
         timer.start(); 
         Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
         robotTracking.Update(res);
@@ -163,7 +166,10 @@ cobalt::main co_main(int argc, char* argv[]) {
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
         // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
         fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
-        co_await robotPosePublisher(robotPose); 
+        co_await robotPosePublisher(Publishers::RobotPosePacket {
+            .pose = robotPose, 
+            .timestamp = frameTimeStamp
+        }); 
 
         // for (Apriltag::EstimationResult estimation : res) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);
