@@ -4,30 +4,13 @@
 #include <opencv4/opencv2/aruco.hpp>
 #include <opencv4/opencv2/opencv.hpp>
 #include "helpers.cpp"
+#include "camera/cameraData.cpp"
+
 
 namespace Apriltag {
-struct CameraData {
-  int id = 0; 
-  bool apriltags = true;
-  // int camToRobotPos{4} = {800,250,300, 0}, # anchored at bottom right of robot
-  double camToRobotPos[4] = {0,0,0, 0};
-  // std::vector<std::vector<double>> matrix =
-  //   {{710.8459662, 0, 584.09769116},
-  //   {0.,710.64515618, 485.94212983},
-  //   {0., 0., 1., }},
-  // std::vector<std::vector<double>> distCoeffs =
-  // {{-0.3689181,0.12470983,-0.0062236,0.00298559,-0.01839474}};
-  cv::Matx<double, 3, 3> matrix = {673.49634849, 0, 616.93113106, 0, 670.71012973, 536.45109056, 0, 0, 1};
-    // {{673.49634849, 0, 616.93113106},
-    // {0, 670.71012973, 536.45109056},
-    // {0, 0, 1}};
-  cv::Matx<double, 1, 5> distCoeffs = 
-    {-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398};
-    // {{-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398}};
-};
 
 struct EstimationResult {
-    const CameraData& cameraInfo; 
+    Camera::CameraData cameraInfo; 
     int id; 
     cv::Mat1d camToTagRvec; 
     cv::Mat1d camToTagTvec; 
@@ -36,7 +19,7 @@ typedef std::vector<EstimationResult> AllEstimationResults;
 
 class Estimator {
     public:
-        Estimator(CameraData cameraData, cv::aruco::DetectorParameters detectorParams): 
+        Estimator(Camera::CameraData cameraData, cv::aruco::DetectorParameters detectorParams): 
             m_cameraData(std::move(cameraData)), 
             m_detector(
                 cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), detectorParams) 
@@ -44,7 +27,7 @@ class Estimator {
             
         }; // Estimator
 
-        cobalt::promise<AllEstimationResults> Detect(cv::Mat image) {
+        AllEstimationResults Detect(cv::Mat image) {
             AllEstimationResults estimations; 
 
             // detecting the tags in image
@@ -54,7 +37,7 @@ class Estimator {
             
             #if defined(DEBUG) && defined(GUI)
             cv::aruco::drawDetectedMarkers(image, corners, ids); 
-            cv::imshow("markers", image); 
+            cv::imshow(fmt::format("camera-{} markers", m_cameraData.id), image); 
             #endif
             // solvepnp to generate cords
             int maxI = ids.size();
@@ -89,12 +72,18 @@ class Estimator {
                     .camToTagTvec = pmat
                 }); 
             }
-            co_return std::move(estimations); 
+            return std::move(estimations); 
         }; // Detect
 
+        cobalt::promise<AllEstimationResults> PromiseDetect(cv::Mat image) {
+            co_return std::move(Detect(image)); 
+        }
+        cobalt::task<AllEstimationResults> TaskDetect(cv::Mat image) {
+            co_return std::move(Detect(image)); 
+        }
 
     private:
-        CameraData m_cameraData; 
+        Camera::CameraData m_cameraData; 
         cv::aruco::ArucoDetector m_detector;
         std::vector<cv::Point3f> m_objectPoints = {
             {-4, 4, 0}, // every one is 33 mm

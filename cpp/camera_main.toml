@@ -1,0 +1,5 @@
+[Camera]
+id = 0
+calibrationFile = "./calibrationResults_1.xml"
+apriltag = true 
+poseEstimation = true

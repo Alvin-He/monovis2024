@@ -1,0 +1,5 @@
+[Camera]
+  id = 2
+  calibrationFile = "/home/administrator/Desktop/Win_Desk/monovis2024/cpp/calibrationResults_2.xml"
+  apriltag = true 
+  poseEstimation = true

@@ -2,3 +2,6 @@
 	path = cpp/include/fmt
 	url = https://github.com/fmtlib/fmt.git
 	branch = 10.x
+[submodule "cpp/include/tomlplusplus"]
+	path = cpp/include/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git

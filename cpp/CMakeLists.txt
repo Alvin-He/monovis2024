@@ -26,6 +26,9 @@ include_directories(
 add_subdirectory(include/fmt EXCLUDE_FROM_ALL)
 link_libraries(fmt)
 
+# # import tomlplusplus::tomlplusplus
+# add_subdirectory(include/tomlplusplus EXCLUDE_FROM_ALL)
+
 add_library(boost_cobalt STATIC IMPORTED)
 set_property(TARGET boost_cobalt PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_cobalt.a)
 add_library(boost_timer STATIC IMPORTED)
@@ -51,4 +54,11 @@ target_link_libraries(prog
 	PRIVATE boost_timer
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
+)
+
+add_executable(foo foo/main.cpp)
+target_compile_options(foo PUBLIC "-fcoroutines")
+target_link_libraries(foo
+	# PRIVATE boost_cobalt
+	PRIVATE boost_program_options
 )

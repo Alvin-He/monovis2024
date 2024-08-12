@@ -13,6 +13,10 @@
 #include "ntcore/networktables/NetworkTable.h"
 #include "ntcore/networktables/NetworkTableInstance.h"
 
+#include "conf/parser.cpp"
+#include "conf/serviceConfigDef.cpp"
+#include "conf/cameraConfigDef.cpp"
+
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 namespace PO = boost::program_options;
@@ -44,28 +48,35 @@ Apriltag::World::WorldInfo FIELD {
     },
 };
 
+// maintaines references to states that's needed to run various tasks
+struct AppState { // resources should be std::moved into here
+    size_t numCameras = 0;
+    std::vector<Conf::CameraConfig> config; 
+    std::vector<cv::VideoCapture> cap; 
+    std::vector<cobalt::generator<cv::Mat>> cameraReader; 
+    std::vector<Camera::CameraData> cameraData; 
+    std::vector<Apriltag::Estimator> estimator;
+
+    // caches
+    std::unique_ptr<cv::Mat> frameCache = nullptr; 
+
+};
+
 bool isFlagExit = false; 
-cobalt::main co_main(int argc, char* argv[]) {    
-    // argument parsing
-    std::string ntServerIP; 
-    int cameraID; 
-    std::string cameraCalibrationFilePath;
+cobalt::main co_main(int argc, char* argv[]) {  
+
+    AppState appState {}; 
+
+    // cli argument parsing
+    std::string configFilePath; 
 
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("nt-ip,S", 
-            PO::value<std::string>(&ntServerIP)
-            ->default_value("127.0.0.1"), 
-            "networktables server ip address")
-        ("camera-id,I", 
-            PO::value<int>(&cameraID)
-            ->default_value(0),
-            "camera ID")
-        ("camera-calibration-file,F",
-            PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_1.xml"), 
-            "camera calibration file path")
+        ("config,c", 
+            PO::value<std::string>(&configFilePath)
+            ->default_value("config.toml"), 
+            "path to service config file")
     ;
     PO::variables_map cliArgMap; 
     PO::store(PO::command_line_parser(argc, argv).options(cliOptions).run(), cliArgMap); 
@@ -76,9 +87,26 @@ cobalt::main co_main(int argc, char* argv[]) {
         co_return 1; 
     } 
 
+    // toml parsing
+    auto config = Conf::LoadToml(configFilePath); 
+    Conf::ServiceConfig selfServiceConfig = Conf::ParseServiceConfig(config);
+    for (auto file : selfServiceConfig.Cameras_configFiles) {
+        appState.config.push_back(Conf::ParseCameraConfig(Conf::LoadToml(file))); 
+    }
+    
+    // global apriltagDetector parameters
+    cv::aruco::DetectorParameters APRILTAG_DETECTOR_PARAMS;
+    // max smaller than 5 seems to work pretty well
+    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
+    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
+    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeStep = 5;
+    APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
+    // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
+
+    // init network tables
     nt::NetworkTableInstance ntInst = nt::NetworkTableInstance::GetDefault();
     ntInst.StartClient4("monovis"); 
-    ntInst.SetServer(ntServerIP.c_str(), 5810);
+    ntInst.SetServer(selfServiceConfig.Comms_NetworkTable_server.c_str(), selfServiceConfig.Comms_NetworkTable_port);
     auto appNetworkTable = ntInst.GetTable("SmartDashboard")->GetSubTable("Vision");
     auto robotPosTable = appNetworkTable->GetSubTable("RobotPos"); 
     auto apriltagGroupTable = appNetworkTable->GetSubTable("Apriltags"); 
@@ -86,86 +114,97 @@ cobalt::main co_main(int argc, char* argv[]) {
     auto robotPosePublisher = Publishers::RobotPosePublisher(robotPosTable); 
 
     Apriltag::World::World robotTracking {FIELD}; 
-    // deseralize camera calibration data
-    // cv::FileStorage cameraCalibData {"calibrationResults_1_0.498.xml", cv::FileStorage::READ}; 
-    cv::FileStorage cameraCalibData {cameraCalibrationFilePath, cv::FileStorage::READ}; 
-    cv::Mat matrix; 
-    cameraCalibData["cameraMatrix"] >> matrix;  
-    cv::Mat distCoeffs;
-    cameraCalibData["dist_coeffs"] >> distCoeffs; 
-    cameraCalibData.release(); 
-    Apriltag::CameraData cameraMainData = {
-        .matrix = std::move(matrix), 
-        .distCoeffs = std::move(distCoeffs)
-    }; 
+    
+    for (const Conf::CameraConfig& camConfig : appState.config) {
+        // start camera streams
+        cv::VideoCapture cap{camConfig.Camera_id}; 
 
-    // start camera streams
-    cv::VideoCapture cap{cameraID}; 
+        Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(camConfig.Camera_calibrationFile);
+        cameraData.id = camConfig.Camera_id;
+        Camera::AdjustCameraDataToForFrameSize(cameraData, cap, PROC_FRAME_SIZE);
 
-    // adjust camera matrix for resized smaller image
-    cameraMainData.matrix(0, 0) *= (PROC_FRAME_SIZE.width / cap.get(cv::CAP_PROP_FRAME_WIDTH)); // fx
-    cameraMainData.matrix(0, 2) *= (PROC_FRAME_SIZE.width / cap.get(cv::CAP_PROP_FRAME_WIDTH)); // cx
-    cameraMainData.matrix(1, 1) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // fy
-    cameraMainData.matrix(1, 2) *= (PROC_FRAME_SIZE.height / cap.get(cv::CAP_PROP_FRAME_HEIGHT)); // cy
+        cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap);
+        Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS}; 
 
-    cobalt::generator<cv::Mat> cameraReader = Camera::Reader(cap);
-
-    cv::aruco::DetectorParameters detectorParams;
-
-    // max smaller than 5 seems to work pretty well
-    detectorParams.adaptiveThreshWinSizeMin = 5; 
-    detectorParams.adaptiveThreshWinSizeMax = 5; 
-    // detectorParams.adaptiveThreshWinSizeStep = 5;
-
-    detectorParams.cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
-    // detectorParams.useAruco3Detection = true;
-
-    Apriltag::Estimator estimator {cameraMainData, detectorParams}; 
-
+        appState.cameraData.push_back(std::move(cameraData)); 
+        appState.cameraReader.push_back(std::move(cameraReader)); 
+        appState.cap.push_back(std::move(cap)); 
+        appState.estimator.push_back(std::move(estimator)); 
+        appState.numCameras += 1; 
+    }
+    
     // signal handlers
     std::signal(SIGINT, [](int i){ isFlagExit = true; }); 
     std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
     std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
 
-    int gaussianBlurKernal = 5; 
-    double gaussianBllueStdev = 0.8;
-    #ifdef GUI
-    std::string testWindow = "test"; 
-    cv::namedWindow(testWindow);
-
-    cv::createTrackbar("Gaussian Blur Kernal", testWindow, nullptr, 10, [](int pos, void* ori) { 
-        int* val = static_cast<int*>(ori); 
-        if (pos < 3) pos = 3; 
-        *val = ((pos % 2) == 0) ? (pos + 1) : pos;  
-    }, &gaussianBlurKernal); 
-    cv::createTrackbar("Gaussian Blur Stddev", testWindow, nullptr, 30, [](int pos, void* ori) { 
-        double* val = static_cast<double*>(ori); 
-        pos /= 10; 
-        *val = pos;
-    }, &gaussianBllueStdev); 
-    
-    #endif 
-
     // main program loop
     // try {
+    
     int64_t serverTimeOffset = ntInst.GetServerTimeOffset().value_or(0); 
+    size_t nThreads = std::thread::hardware_concurrency();
+    
+    // only create more threads if there are more than 2 threads (no benifit if less than 2, main program uses a thread and networking + the OS will need the other core)
+    std::unique_ptr<asio::thread_pool> threadPool = nullptr; 
+    if (nThreads > 2) {
+        if (nThreads > appState.numCameras) nThreads = appState.numCameras; // no use creating more threads than there are cameras
+        threadPool = std::make_unique<asio::thread_pool>(nThreads);
+        fmt::println("threads: {}", nThreads);
+    }; 
+
     while (!isFlagExit)
     {   
-        cv::Mat frame = co_await cameraReader;
+        auto allCamFrames = co_await cobalt::join(appState.cameraReader); // std::vector<cv::Mat> with pmr as allocator
+
+        // timestamp immediately after we got the frames so lag is minminzed 
         int64_t frameTimeStamp = nt::Now() + serverTimeOffset;  
         
-        frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE);
+        for (auto&& frame : allCamFrames) { // could put all the CudaResize calls into a cobalt join call to improve performance  
+            frame = co_await Camera::CudaResize(frame, PROC_FRAME_SIZE);
+        } 
+        
         #ifdef GUI
-        cv::imshow("test", frame);
+        for (size_t i = 0; i < appState.numCameras; i++) cv::imshow("camera " + std::to_string(appState.cameraData[i].id) , allCamFrames[i]);
         #endif
         boost::timer::cpu_timer timer;         
         timer.start(); 
-        Apriltag::AllEstimationResults res = co_await estimator.Detect(frame); 
+
+        Apriltag::AllEstimationResults res; 
+
+        if (threadPool == nullptr) { // single thread mode
+            for (size_t i = 0; i < appState.numCameras; i++) {
+                auto procRes = co_await appState.estimator[i].PromiseDetect(allCamFrames[i]); 
+                res.insert(res.end(), procRes.begin(), procRes.end()); 
+            }
+
+        } else { // a thread pool exist
+            std::vector<std::future<Apriltag::AllEstimationResults>> allEstimateTasks;
+
+            for (size_t i = 0; i < appState.numCameras; i++) {
+                std::future<Apriltag::AllEstimationResults> estimateTask = cobalt::spawn(
+                    asio::make_strand(threadPool->get_executor()), 
+                    appState.estimator[i].TaskDetect(
+                        allCamFrames[i]
+                    ),
+                    asio::use_future
+                );
+                allEstimateTasks.push_back(std::move(estimateTask)); 
+            }
+
+
+            for (auto& task : allEstimateTasks) {
+                auto procRes = task.get(); 
+                res.insert(res.end(), procRes.begin(), procRes.end()); 
+            } // flatten the vector<vector<EstimationResult>> into AllEstimationResults
+        }
+
+
+        // Apriltag::AllEstimationResults res = co_await appState.estimator[0].PromiseDetect(allCamFrames[0]); 
         robotTracking.Update(res);
-        // fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
+        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
         // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
-        fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
+        // fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
         co_await robotPosePublisher(Publishers::RobotPosePacket {
             .pose = robotPose, 
             .timestamp = frameTimeStamp
@@ -186,10 +225,13 @@ cobalt::main co_main(int argc, char* argv[]) {
     // exit handling 
     fmt::println("Exiting..."); 
     ntInst.StopClient(); 
-    cap.release(); 
+    for (auto& cap : appState.cap) cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-    
+    if (threadPool != nullptr) {
+        threadPool->stop(); 
+        threadPool->join(); 
+    }
     co_return 0; 
 }
