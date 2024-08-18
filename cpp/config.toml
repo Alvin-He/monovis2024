@@ -1,7 +1,7 @@
 
 [Comms]
   [Comms.NetworkTable]
-  server="10.42.0.1"
+  server="127.46.69.1"#"10.42.0.1"
   port = 5810
 
 [Apriltag]

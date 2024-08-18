@@ -5,8 +5,8 @@
 #include <opencv4/opencv2/opencv.hpp>
 #include "helpers.cpp"
 #include "camera/cameraData.cpp"
-
-
+#include <fmt/include/fmt/core.h> // why tf is fmt not defined here even when damn common.cpp exist
+// and it was fine yesterday
 namespace Apriltag {
 
 struct EstimationResult {
@@ -27,6 +27,8 @@ class Estimator {
             
         }; // Estimator
 
+        // detect an apriltag in an image
+        // this method can be used in threads with out locking Estimator 
         AllEstimationResults Detect(cv::Mat image) {
             AllEstimationResults estimations; 
 

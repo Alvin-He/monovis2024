@@ -4,6 +4,7 @@
 
 // #define DEBUG true
 // #define GUI true
+#define HAS_CUDA true
 
 #if __has_include("dev_overwrite_global.cpp")
     #include "dev_overwrite_global.cpp"

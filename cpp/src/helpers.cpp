@@ -71,10 +71,15 @@ vector_d reject_outliers_2(const vector_d& linearArray, double m = 1.2) {
     // return data[s < m]
 }
 
-double average(const vector_d& data) {
-    double sum = std::accumulate(data.begin(), data.end(), 0.0); 
-    double size = data.begin() - data.end();
+template<typename T>
+T average(const std::vector<T>& data) {
+    T sum = std::accumulate(data.begin(), data.end(), 0.0); 
+    T size = (data.begin() - data.end()) || 1;
     return sum / size; 
+}
+
+double average(const vector_d& data) {
+    return average<double>(data);
 }
 
 std::vector<double> rotatePoint(double x, double y, double theta) {
