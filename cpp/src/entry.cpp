@@ -41,28 +41,6 @@ struct AppState { // resources should be std::moved into here
     std::vector<cv::VideoCapture> cameraCaps; 
 };
 
-cobalt::thread CameraProcess(std::shared_ptr<Async::State> state) {
-    for(;;) {
-        cv::Mat frame = co_await state->frameGen->PromiseRead(); 
-        boost::timer::cpu_timer timer; 
-        timer.start(); 
-
-        int64_t newTs = NetworkTime::Now();
-
-        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
-
-        Apriltag::AllEstimationResults res = co_await state->estimator->PromiseDetect(frame); 
-
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
-        std::unique_lock _l1 {state->frameTimeStamp};
-        *state->frameTimeStamp = newTs;
-        std::unique_lock _l2 {state->estimationResults}; 
-        *state->estimationResults = std::move(res); 
-    }
-
-}
-
-
 bool isFlagExit = false; 
 cobalt::main co_main(int argc, char* argv[]) {  
 
@@ -151,31 +129,25 @@ cobalt::main co_main(int argc, char* argv[]) {
     std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
     std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
 
-    std::vector<cobalt::thread> greenThreads; 
-    for (auto& state : appState.cameraStates) {
-        greenThreads.push_back(CameraProcess(state)); 
-    }
-
-
     // main program loop
     // try {
     fmt::println("starting main program loop");
-    auto interval =  (1000ms/K::NT_UPDATES_PER_SECOND);
-    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, interval};
     while (!isFlagExit)
     {   
-        co_await timer.async_wait(cobalt::use_op);
-        timer.expires_at(timer.expires_at() + interval);
-
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
 
         for (auto& state : appState.cameraStates) {
-            std::unique_lock _l1 {state->frameTimeStamp};
-            std::unique_lock _l2 {state->estimationResults}; 
-    
-            auto res = *state->estimationResults;
-            allTimestamps.push_back(*state->frameTimeStamp); 
+            cv::Mat frame = co_await state->frameGen->PromiseRead(); 
+            boost::timer::cpu_timer timer; 
+            timer.start(); 
+
+            allTimestamps.push_back(NetworkTime::Now()); 
+            frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
+
+            Apriltag::AllEstimationResults res = co_await state->estimator->PromiseDetect(frame); 
+
+            fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
             if (res.size() < 1) continue;
             fusedRes.insert(fusedRes.end(), res.begin(), res.end());
         }
@@ -204,7 +176,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     
     // exit handling 
     fmt::println("Exiting..."); 
-    ntInst.StopClient();
+    ntInst.StopClient(); 
     for (auto& cap : appState.cameraCaps) cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
