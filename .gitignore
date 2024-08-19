@@ -7,8 +7,12 @@
 
 .venv
 build
+winBuild
 allwpilib
 bin/
+
+# temperorily not tracking front end
+frontend
 
 *.log
 *.tar.gz
