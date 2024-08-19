@@ -38,23 +38,31 @@ TASK(PreprocessCameraFrames) {
     // lock all the resources used
     std::shared_lock _l1 {state->cameraData}; 
     std::shared_lock _l4 {state->frameGen}; 
-    std::unique_lock _l2 {state->frame}; 
-    std::unique_lock _l3 {state->frameTimeStamp}; 
 
     // get frame
     auto newFrame = co_await state->frameGen->TaskRead(); 
-    *state->frameTimeStamp = NetworkTime::Now(); // get timestamp
-    *state->frame = co_await Camera::TaskResize(newFrame, K::PROC_FRAME_SIZE); // resize image (with cuda)
+    auto newTS = NetworkTime::Now(); // get timestamp
+    newFrame = co_await Camera::TaskResize(newFrame, K::PROC_FRAME_SIZE); // resize image (with cuda)
+
+    // exclsively lock frame and frameTs when we need them; 
+    std::unique_lock _l2 {state->frame}; 
+    std::unique_lock _l3 {state->frameTimeStamp};
+    *state->frame = newFrame; 
+    *state->frameTimeStamp = newTS;  
 }; 
 
 TASK(EstimateApriltag) {
-    std::unique_lock _l1 {state->estimationResults}; 
     std::shared_lock _l2 {state->frame}; 
+    cv::Mat frameCache = state->frame->clone(); // copy frame into a local buffer
+    _l2.unlock(); 
 
     boost::timer::cpu_timer timer;
     timer.start(); 
     // run detection
-    *state->estimationResults = co_await state->estimator->TaskDetect(*state->frame); 
+    Apriltag::AllEstimationResults res = co_await state->estimator->TaskDetect(std::move(frameCache)); 
+    std::unique_lock _l1 {state->estimationResults}; 
+    *state->estimationResults = std::move(res); 
+
     fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
 }; 
 }
