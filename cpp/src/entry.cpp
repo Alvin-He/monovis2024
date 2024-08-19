@@ -149,6 +149,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     // start the entry task
     for (auto &runner : appState.cameraTaskRunner) {
         runner.run(Tasks::PreprocessCameraFrames.GetRef()); 
+        runner.run(Tasks::EstimateApriltag.GetRef()); 
     }
 
     boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, (1000ms/K::NT_UPDATES_PER_SECOND)};
