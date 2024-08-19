@@ -132,47 +132,28 @@ cobalt::main co_main(int argc, char* argv[]) {
     // main program loop
     // try {
     
-    size_t nThreads = std::thread::hardware_concurrency();
-    if (nThreads == 0) nThreads = 1;
-
-    std::shared_ptr<asio::thread_pool> threadPool = std::make_shared<asio::thread_pool>(nThreads); 
-
-    // initialize the task runners for each camera
-    for (auto &state : appState.cameraStates) {
-        appState.cameraTaskRunner.emplace_back(threadPool, state);     
-    }
-
-    // set up the pipeline for camera processing
-    Tasks::PreprocessCameraFrames.SetNext(Tasks::EstimateApriltag.GetRef());
-    Tasks::EstimateApriltag.SetNext(Tasks::PreprocessCameraFrames.GetRef()); 
-
-    // start the entry task
-    for (auto &runner : appState.cameraTaskRunner) {
-        runner.run(Tasks::PreprocessCameraFrames.GetRef()); 
-    }
-
-    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, (1000ms/K::NT_UPDATES_PER_SECOND)};
     while (!isFlagExit)
     {   
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
-        for (auto& state : appState.cameraStates) {
-            std::shared_lock _l1(state->estimationResults); 
-            std::shared_lock _l2(state->frameTimeStamp); 
 
-            auto estiRes = state->estimationResults; 
-            auto frameTs = state->frameTimeStamp;
-            
-            if (estiRes->size() < 1) continue;
-            
-            fusedRes.insert(fusedRes.end(), estiRes->begin(), estiRes->end());
-            allTimestamps.push_back(*frameTs);
+        boost::timer::cpu_timer timer; 
+        timer.start(); 
+        for (auto& state : appState.cameraStates) {
+            cv::Mat frame = co_await state->frameGen->PromiseRead(); 
+            allTimestamps.push_back(NetworkTime::Now()); 
+            frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
+
+            Apriltag::AllEstimationResults res = co_await state->estimator->PromiseDetect(frame); 
+            if (res.size() < 1) continue;
+            fusedRes.insert(fusedRes.end(), res.begin(), res.end());
         }
         int64_t fusedTs = h::average(allTimestamps); 
 
         robotTracking.Update(fusedRes);
+        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
-        fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
+        // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
         // fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
         co_await robotPosePublisher(Publishers::RobotPosePacket {
             .pose = robotPose, 
@@ -198,8 +179,6 @@ cobalt::main co_main(int argc, char* argv[]) {
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-    threadPool->stop(); 
-    threadPool->join(); 
     exit(0);
     co_return 0; 
 }
