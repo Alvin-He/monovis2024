@@ -5,3 +5,4 @@
 [submodule "cpp/include/tomlplusplus"]
 	path = cpp/include/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+	branch = master
