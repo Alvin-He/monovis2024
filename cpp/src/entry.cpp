@@ -131,27 +131,29 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // main program loop
     // try {
-    
+    fmt::println("starting main program loop");
     while (!isFlagExit)
     {   
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
 
-        boost::timer::cpu_timer timer; 
-        timer.start(); 
         for (auto& state : appState.cameraStates) {
             cv::Mat frame = co_await state->frameGen->PromiseRead(); 
+            boost::timer::cpu_timer timer; 
+            timer.start(); 
+
             allTimestamps.push_back(NetworkTime::Now()); 
             frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
 
             Apriltag::AllEstimationResults res = co_await state->estimator->PromiseDetect(frame); 
+
+            fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
             if (res.size() < 1) continue;
             fusedRes.insert(fusedRes.end(), res.begin(), res.end());
         }
         int64_t fusedTs = h::average(allTimestamps); 
 
         robotTracking.Update(fusedRes);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
         // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
         // fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
