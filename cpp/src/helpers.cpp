@@ -3,7 +3,6 @@
 #include <boost/cobalt.hpp>
 #include <algorithm>
 #include <Eigen/Dense>
-#include <cmath>
 // alialias
 namespace cobalt = boost::cobalt;
 
