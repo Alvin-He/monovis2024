@@ -138,25 +138,6 @@ cobalt::main co_main(int argc, char* argv[]) {
     std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
     std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
 
-    int gaussianBlurKernal = 5; 
-    double gaussianBllueStdev = 0.8;
-    #ifdef GUI
-    std::string testWindow = "test"; 
-    cv::namedWindow(testWindow);
-
-    cv::createTrackbar("Gaussian Blur Kernal", testWindow, nullptr, 10, [](int pos, void* ori) { 
-        int* val = static_cast<int*>(ori); 
-        if (pos < 3) pos = 3; 
-        *val = ((pos % 2) == 0) ? (pos + 1) : pos;  
-    }, &gaussianBlurKernal); 
-    cv::createTrackbar("Gaussian Blur Stddev", testWindow, nullptr, 30, [](int pos, void* ori) { 
-        double* val = static_cast<double*>(ori); 
-        pos /= 10; 
-        *val = pos;
-    }, &gaussianBllueStdev); 
-    
-    #endif 
-
     // main program loop
     // try {
     
