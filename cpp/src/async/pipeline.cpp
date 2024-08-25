@@ -30,19 +30,19 @@ struct State {
 };
 
 
-void NormalCameraPipeline(std::shared_ptr<State> state) { cobalt::run( ([&]() -> cobalt::task<void> {
-    for(;;) {
+void NormalCameraPipeline(std::shared_ptr<State> statePtr) { cobalt::run( ([&]() -> cobalt::task<void> {
+    State state = *statePtr; 
+    for(;;) { boost::this_thread::interruption_point(); // allow interrupts 
         boost::timer::cpu_timer timer;
 
-        boost::this_thread::interruption_point(); // allow interrupts 
 
-        auto frame = state->frameGen.Read();
-        frame = Camera::Resize(frame, K::PROC_FRAME_SIZE); 
-        state->frameTimeStamp = std::make_shared<int64_t>(NetworkTime::Now()); 
+        auto frame = co_await state.frameGen.PromiseRead();
+        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
+        state.frameTimeStamp = std::make_shared<int64_t>(NetworkTime::Now()); 
 
-        if (state->config.Camera_apriltagEnabled) {
-            auto estimatorRes = state->estimator.Detect(frame); 
-            state->estimationResult = std::make_shared<Apriltag::AllEstimationResults>(std::move(estimatorRes)); 
+        if (state.config.Camera_apriltagEnabled) {
+            auto estimatorRes = co_await state.estimator.PromiseDetect(frame); 
+            state.estimationResult = std::make_shared<Apriltag::AllEstimationResults>(std::move(estimatorRes)); 
         }
         fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
     };

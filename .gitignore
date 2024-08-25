@@ -19,6 +19,8 @@ frontend
 *.gz
 *.biz
 *__pycache__
+*.perf
+*.data
 
 cpp/libs/boost
 cpp/include/boost
