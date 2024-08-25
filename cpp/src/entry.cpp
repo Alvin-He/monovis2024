@@ -19,8 +19,7 @@
 #include "conf/serviceConfigDef.cpp"
 #include "conf/cameraConfigDef.cpp"
 
-#include "async/synchronization.cpp"
-#include "async/task.cpp"
+#include "async/pipeline.cpp"
 
 #include "tasks.cpp"
 
@@ -32,8 +31,7 @@ namespace PO = boost::program_options;
 struct AppState { // resources should be std::moved into here
     size_t numCameras = 0;
 
-    std::vector<std::shared_ptr<Async::State>> cameraStates; 
-    std::vector<Async::TaskRunner> cameraTaskRunner;
+    std::vector<std::shared_ptr<State>> cameraStates; 
 
     std::vector<Conf::CameraConfig> cameraConfigs; 
 
@@ -106,21 +104,17 @@ cobalt::main co_main(int argc, char* argv[]) {
         Camera::FrameGenerator cameraReader {cap};
         Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS}; 
 
-        Async::State cameraState = {
-            .config = std::make_shared<Conf::CameraConfig>(camConfig),
-            .cameraData = std::make_shared<Camera::CameraData>(std::move(cameraData)),
+        State cameraState = {
+            .config = Conf::CameraConfig(camConfig),
+            .cameraData = std::move(cameraData),
 
-            .estimator = std::make_shared<Apriltag::Estimator>(std::move(estimator)),
-            .frameGen = std::make_shared<Camera::FrameGenerator>(std::move(cameraReader)),
-
-            .frame = std::make_shared<cv::Mat>(),
-            .frameTimeStamp = std::make_shared<int64_t>(std::move(nt::Now())),
-            .estimationResults = std::make_shared<Apriltag::AllEstimationResults>()
+            .estimator = std::move(estimator),
+            .frameGen = std::move(cameraReader), 
         }; 
 
         appState.cameraCaps.push_back(std::move(cap)); 
         
-        appState.cameraStates.push_back(std::make_shared<Async::State>(std::move(cameraState))); 
+        appState.cameraStates.push_back(std::make_shared<State>(std::move(cameraState))); 
         appState.numCameras += 1; 
     }
     
@@ -132,37 +126,27 @@ cobalt::main co_main(int argc, char* argv[]) {
     // main program loop
     // try {
     
-    size_t nThreads = std::thread::hardware_concurrency();
+    size_t nThreads = boost::thread::hardware_concurrency();
     if (nThreads == 0) nThreads = 1;
 
-    std::shared_ptr<asio::thread_pool> threadPool = std::make_shared<asio::thread_pool>(nThreads); 
-
-    // initialize the task runners for each camera
-    for (auto &state : appState.cameraStates) {
-        appState.cameraTaskRunner.emplace_back(threadPool, state);     
+    std::vector<boost::thread> threads; 
+    for (auto state : appState.cameraStates) {
+        threads.push_back(boost::thread {NormalCameraPipeline, state}); 
     }
 
-    // set up the pipeline for camera processing
-    Tasks::PreprocessCameraFrames.SetNext(Tasks::EstimateApriltag.GetRef());
-    Tasks::EstimateApriltag.SetNext(Tasks::PreprocessCameraFrames.GetRef()); 
-
-    // start the entry task
-    for (auto &runner : appState.cameraTaskRunner) {
-        runner.run(Tasks::PreprocessCameraFrames.GetRef()); 
-        runner.run(Tasks::EstimateApriltag.GetRef()); 
-    }
-
-    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, (1000ms/K::NT_UPDATES_PER_SECOND)};
+    auto updateInterval = (1000ms/K::NT_UPDATES_PER_SECOND);
+    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, updateInterval};
     while (!isFlagExit)
     {   
+        co_await timer.async_wait(cobalt::use_op);
+        timer.expires_at(timer.expires_at() + updateInterval);
+
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
         for (auto& state : appState.cameraStates) {
-            std::shared_lock _l1(state->estimationResults); 
-            std::shared_lock _l2(state->frameTimeStamp); 
-
-            auto estiRes = state->estimationResults; 
+            auto estiRes = state->estimationResult; 
             auto frameTs = state->frameTimeStamp;
+            if (!estiRes || !frameTs) continue;
             
             if (estiRes->size() < 1) continue;
             
@@ -198,9 +182,13 @@ cobalt::main co_main(int argc, char* argv[]) {
     for (auto& cap : appState.cameraCaps) cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
-    #endif
-    threadPool->stop(); 
-    threadPool->join(); 
+    #endif 
+    for (auto& thread : threads) thread.interrupt();
+    for (auto& thread : threads) {
+        bool suscess = thread.try_join_for(boost::chrono::seconds(5));
+        if (!suscess) pthread_kill(thread.native_handle(), 9); // send SIGKILL
+    } 
+
     exit(0);
     co_return 0; 
 }

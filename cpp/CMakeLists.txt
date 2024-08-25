@@ -33,6 +33,11 @@ add_library(boost_timer STATIC IMPORTED)
 set_property(TARGET boost_timer PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_timer.a)
 add_library(boost_program_options STATIC IMPORTED)
 set_property(TARGET boost_program_options PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_program_options.a)
+add_library(boost_thread STATIC IMPORTED)
+set_property(TARGET boost_thread PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_thread.a)
+add_library(boost_chrono STATIC IMPORTED)
+set_property(TARGET boost_chrono PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_chrono.a)
+
 
 find_package (Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED 
@@ -47,6 +52,8 @@ target_compile_options(prog
 target_link_libraries(prog
 	PRIVATE boost_cobalt
 	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
 	PRIVATE ${OpenCV_LIBS}
 	PRIVATE Threads::Threads
 	PRIVATE boost_timer
