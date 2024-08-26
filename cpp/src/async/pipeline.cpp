@@ -24,8 +24,8 @@ struct State {
 
     // these shared pointers must be replaced with assignment operator!!! to avoid locking issues
     // they will be freed automatically when no one is using them
-    std::shared_ptr<int64_t> frameTimeStamp; 
-    std::shared_ptr<Apriltag::AllEstimationResults> estimationResult; 
+    std::shared_ptr<std::shared_ptr<int64_t>> frameTimeStamp; 
+    std::shared_ptr<std::shared_ptr<Apriltag::AllEstimationResults>> estimationResult; 
 
 };
 
