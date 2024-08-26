@@ -30,23 +30,26 @@ struct State {
 };
 
 
-void NormalCameraPipeline(std::shared_ptr<State> statePtr) { cobalt::run( ([&]() -> cobalt::task<void> {
-    State state = *statePtr; 
-    boost::asio::steady_timer execTimer {co_await cobalt::this_coro::executor, K::APRILTAG_LOOP_UPDATE_INTERVAL}; 
+void NormalCameraPipeline(std::shared_ptr<State> statePtr) {
+    State state = *statePtr;
+    auto lastTime = boost::chrono::system_clock::now();
     for(;;) { boost::this_thread::interruption_point(); // allow interrupts 
         boost::timer::cpu_timer timer;
-
-        auto frame = co_await state.frameGen.PromiseRead();
-        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
-        state.frameTimeStamp = std::make_shared<int64_t>(NetworkTime::Now()); 
+    
+        auto frame = state.frameGen.Read();
+        frame = Camera::Resize(frame, K::PROC_FRAME_SIZE); 
+        state.frameTimeStamp = std::make_shared<std::shared_ptr<int64_t>>(std::make_shared<int64_t>(NetworkTime::Now())); 
 
         if (state.config.Camera_apriltagEnabled) {
-            auto estimatorRes = co_await state.estimator.PromiseDetect(frame); 
-            state.estimationResult = std::make_shared<Apriltag::AllEstimationResults>(std::move(estimatorRes)); 
+            // auto estimatorRes = co_await state.estimator.PromiseDetect(frame); 
+            auto estimatorRes = state.estimator.Detect(frame); 
+            state.estimationResult = std::make_shared<std::shared_ptr<Apriltag::AllEstimationResults>>(std::make_shared<Apriltag::AllEstimationResults>(std::move(estimatorRes))); 
         }
         fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
 
-        co_await execTimer.async_wait(cobalt::use_op);
-        execTimer.expires_at(execTimer.expires_at() + K::APRILTAG_LOOP_UPDATE_INTERVAL);
+        auto endTime = boost::chrono::system_clock::now();
+        auto waitDuration = endTime - (lastTime + K::APRILTAG_LOOP_UPDATE_INTERVAL); 
+        lastTime = endTime; 
+        if (waitDuration > boost::chrono::milliseconds(0)) boost::this_thread::sleep_for(waitDuration); 
     };
-})());}; 
+};

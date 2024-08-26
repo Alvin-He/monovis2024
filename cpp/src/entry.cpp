@@ -144,9 +144,10 @@ cobalt::main co_main(int argc, char* argv[]) {
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
         for (auto& state : appState.cameraStates) {
-            auto estiRes = state->estimationResult; 
-            auto frameTs = state->frameTimeStamp;
-            if (!estiRes || !frameTs) continue;
+            if (! state->estimationResult || ! *state->estimationResult) continue;
+            auto estiRes = *state->estimationResult;
+            if (! state->frameTimeStamp || ! *state->frameTimeStamp) continue;
+            auto frameTs = *state->frameTimeStamp;
             
             if (estiRes->size() < 1) continue;
             
