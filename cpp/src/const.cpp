@@ -2,9 +2,13 @@
 
 #include <opencv4/opencv2/opencv.hpp>
 #include "apriltag/apriltag.hpp"
+#include <boost/chrono.hpp>
+// support for time unit postfix, eg: 10ms 10min 10 day 
+using namespace std::literals::chrono_literals;
 
 namespace K {
 
+auto APRILTAG_LOOP_UPDATE_INTERVAL = 70ms; 
 size_t NT_UPDATES_PER_SECOND = 11;
 
 cv::Size2d PROC_FRAME_SIZE (640, 480); 

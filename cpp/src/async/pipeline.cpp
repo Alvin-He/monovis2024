@@ -32,9 +32,9 @@ struct State {
 
 void NormalCameraPipeline(std::shared_ptr<State> statePtr) { cobalt::run( ([&]() -> cobalt::task<void> {
     State state = *statePtr; 
+    boost::asio::steady_timer execTimer {co_await cobalt::this_coro::executor, K::APRILTAG_LOOP_UPDATE_INTERVAL}; 
     for(;;) { boost::this_thread::interruption_point(); // allow interrupts 
         boost::timer::cpu_timer timer;
-
 
         auto frame = co_await state.frameGen.PromiseRead();
         frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
@@ -45,5 +45,8 @@ void NormalCameraPipeline(std::shared_ptr<State> statePtr) { cobalt::run( ([&]()
             state.estimationResult = std::make_shared<Apriltag::AllEstimationResults>(std::move(estimatorRes)); 
         }
         fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
+
+        co_await execTimer.async_wait(cobalt::use_op);
+        execTimer.expires_at(execTimer.expires_at() + K::APRILTAG_LOOP_UPDATE_INTERVAL);
     };
 })());}; 
