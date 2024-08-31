@@ -19,6 +19,11 @@
 #include "conf/serviceConfigDef.cpp"
 #include "conf/cameraConfigDef.cpp"
 
+#include "async/synchronization.cpp"
+#include "async/task.cpp"
+
+#include "tasks.cpp"
+
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 namespace PO = boost::program_options;
@@ -26,6 +31,9 @@ namespace PO = boost::program_options;
 // maintaines references to states that's needed to run various tasks
 struct AppState { // resources should be std::moved into here
     size_t numCameras = 0;
+
+    std::vector<std::shared_ptr<Async::State>> cameraStates; 
+    std::vector<Async::TaskRunner> cameraTaskRunner;
 
     std::vector<Conf::CameraConfig> cameraConfigs; 
 
@@ -35,13 +43,11 @@ struct AppState { // resources should be std::moved into here
 
 bool isFlagExit = false; 
 cobalt::main co_main(int argc, char* argv[]) {  
+
     AppState appState {}; 
 
     // cli argument parsing
     std::string configFilePath; 
-    std::string ntServerIP; 
-    int cameraID; 
-    std::string cameraCalibrationFilePath;
 
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
@@ -50,18 +56,6 @@ cobalt::main co_main(int argc, char* argv[]) {
             PO::value<std::string>(&configFilePath)
             ->default_value("config.toml"), 
             "path to service config file")
-        ("nt-ip,S", 
-            PO::value<std::string>(&ntServerIP)
-            ->default_value("127.0.0.1"), 
-            "networktables server ip address")
-        ("camera-id,I", 
-            PO::value<int>(&cameraID)
-            ->default_value(0),
-            "camera ID")
-        ("camera-calibration-file,F",
-            PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_1.xml"), 
-            "camera calibration file path")
     ;
     PO::variables_map cliArgMap; 
     PO::store(PO::command_line_parser(argc, argv).options(cliOptions).run(), cliArgMap); 
@@ -101,14 +95,34 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     Apriltag::World::World robotTracking {K::FIELD}; 
     
-    cv::VideoCapture cap{cameraID}; 
+    for (const Conf::CameraConfig& camConfig : appState.cameraConfigs) {
+        // start camera streams
+        cv::VideoCapture cap{camConfig.Camera_id}; 
 
-    Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
-    cameraData.id = cameraID; 
-    Camera::AdjustCameraDataToForFrameSize(cameraData, cap, K::PROC_FRAME_SIZE);
+        Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(camConfig.Camera_calibrationFile);
+        cameraData.id = camConfig.Camera_id;
+        Camera::AdjustCameraDataToForFrameSize(cameraData, cap, K::PROC_FRAME_SIZE);
 
-    Camera::FrameGenerator cameraReader {cap};
-    Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
+        Camera::FrameGenerator cameraReader {cap};
+        Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS}; 
+
+        Async::State cameraState = {
+            .config = std::make_shared<Conf::CameraConfig>(camConfig),
+            .cameraData = std::make_shared<Camera::CameraData>(std::move(cameraData)),
+
+            .estimator = std::make_shared<Apriltag::Estimator>(std::move(estimator)),
+            .frameGen = std::make_shared<Camera::FrameGenerator>(std::move(cameraReader)),
+
+            .frame = std::make_shared<cv::Mat>(),
+            .frameTimeStamp = std::make_shared<int64_t>(std::move(nt::Now())),
+            .estimationResults = std::make_shared<Apriltag::AllEstimationResults>()
+        }; 
+
+        appState.cameraCaps.push_back(std::move(cap)); 
+        
+        appState.cameraStates.push_back(std::make_shared<Async::State>(std::move(cameraState))); 
+        appState.numCameras += 1; 
+    }
     
     // signal handlers
     std::signal(SIGINT, [](int i){ isFlagExit = true; }); 
@@ -117,31 +131,56 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // main program loop
     // try {
-    fmt::println("starting main program loop");
+    
+    size_t nThreads = std::thread::hardware_concurrency();
+    if (nThreads == 0) nThreads = 1;
+
+    std::shared_ptr<asio::thread_pool> threadPool = std::make_shared<asio::thread_pool>(nThreads); 
+
+    // initialize the task runners for each camera
+    for (auto &state : appState.cameraStates) {
+        appState.cameraTaskRunner.emplace_back(threadPool, state);     
+    }
+
+    // set up the pipeline for camera processing
+    Tasks::PreprocessCameraFrames.SetNext(Tasks::EstimateApriltag.GetRef());
+    Tasks::EstimateApriltag.SetNext(Tasks::PreprocessCameraFrames.GetRef()); 
+
+    // start the entry task
+    for (auto &runner : appState.cameraTaskRunner) {
+        runner.run(Tasks::PreprocessCameraFrames.GetRef()); 
+        runner.run(Tasks::EstimateApriltag.GetRef()); 
+    }
+
+    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, (1000ms/K::NT_UPDATES_PER_SECOND)};
     while (!isFlagExit)
     {   
-        boost::timer::cpu_timer timer; 
-        timer.start(); 
-        
-        cv::Mat frame = co_await cameraReader.PromiseRead(); 
-        auto ts = NetworkTime::Now();
-        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
-        #ifdef GUI
-        cv::imshow("test", frame);
-        #endif
-        
-        Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
-        robotTracking.Update(res);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
+        Apriltag::AllEstimationResults fusedRes; 
+        std::vector<int64_t> allTimestamps; 
+        for (auto& state : appState.cameraStates) {
+            std::shared_lock _l1(state->estimationResults); 
+            std::shared_lock _l2(state->frameTimeStamp); 
+
+            auto estiRes = state->estimationResults; 
+            auto frameTs = state->frameTimeStamp;
+            
+            if (estiRes->size() < 1) continue;
+            
+            fusedRes.insert(fusedRes.end(), estiRes->begin(), estiRes->end());
+            allTimestamps.push_back(*frameTs);
+        }
+        int64_t fusedTs = h::average(allTimestamps); 
+
+        robotTracking.Update(fusedRes);
         Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
         // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
-//        fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
+        // fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
         co_await robotPosePublisher(Publishers::RobotPosePacket {
             .pose = robotPose, 
-            .timestamp = ts
+            .timestamp = fusedTs
         }); 
 
-        // for (Apriltag::EstimationResult estimation : res) {
+        // for (Apriltag::EstimationResult estimation : fusedRes) {
         //     fmt::println("rot:{}", estimation.camToTagRvec);
         //     fmt::println("trans:{}", estimation.camToTagTvec); 
         // }
@@ -156,11 +195,12 @@ cobalt::main co_main(int argc, char* argv[]) {
     // exit handling 
     fmt::println("Exiting..."); 
     ntInst.StopClient(); 
-    cap.release(); 
+    for (auto& cap : appState.cameraCaps) cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-     
-
+    threadPool->stop(); 
+    threadPool->join(); 
+    exit(0);
     co_return 0; 
 }
