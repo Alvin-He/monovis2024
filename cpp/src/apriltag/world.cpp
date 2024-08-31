@@ -2,7 +2,7 @@
 // absoulote position tracking
 #include "helpers.cpp"
 #include "global.cpp"
-#include "common.cpp"
+#include "apriltag/common.cpp"
 #include "apriltag/estimator.cpp"
 
 #include <fmt/include/fmt/ranges.h>
@@ -127,8 +127,8 @@ class World {
         vector_d allPossibleYaw; 
 
         for (Apriltag::EstimationResult res : results) {
-            // fmt::println("tvec: {}", res.camToTagTvec); 
-            // fmt::println("rvev: {}", res.camToTagRvec); 
+//            fmt::println("tvec: {}", res.camToTagTvec); 
+//            fmt::println("rvev: {}", res.camToTagRvec); 
 
             TagLocation tag = m_worldInfo.tags[res.id];
 
