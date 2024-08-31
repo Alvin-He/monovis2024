@@ -125,17 +125,7 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // main program loop
     // try {
-    
-    size_t nThreads = boost::thread::hardware_concurrency();
-    if (nThreads == 0) nThreads = 1;
-
-    std::vector<boost::thread> threads; 
-    for (auto state : appState.cameraStates) {
-        threads.push_back(boost::thread {NormalCameraPipeline, state}); 
-    }
-
-    auto updateInterval = (1000ms/K::NT_UPDATES_PER_SECOND);
-    boost::asio::steady_timer timer{co_await cobalt::this_coro::executor, updateInterval};
+    fmt::println("starting main program loop");
     while (!isFlagExit)
     {   
         co_await timer.async_wait(cobalt::use_op);
@@ -143,16 +133,20 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         Apriltag::AllEstimationResults fusedRes; 
         std::vector<int64_t> allTimestamps; 
+
         for (auto& state : appState.cameraStates) {
-            if (! state->estimationResult || ! *state->estimationResult) continue;
-            auto estiRes = *state->estimationResult;
-            if (! state->frameTimeStamp || ! *state->frameTimeStamp) continue;
-            auto frameTs = *state->frameTimeStamp;
-            
-            if (estiRes->size() < 1) continue;
-            
-            fusedRes.insert(fusedRes.end(), estiRes->begin(), estiRes->end());
-            allTimestamps.push_back(*frameTs);
+            cv::Mat frame = co_await state->frameGen->PromiseRead(); 
+            boost::timer::cpu_timer timer; 
+            timer.start(); 
+
+            allTimestamps.push_back(NetworkTime::Now()); 
+            frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE); 
+
+            Apriltag::AllEstimationResults res = co_await state->estimator->PromiseDetect(frame); 
+
+            fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
+            if (res.size() < 1) continue;
+            fusedRes.insert(fusedRes.end(), res.begin(), res.end());
         }
         int64_t fusedTs = h::average(allTimestamps); 
 
@@ -183,13 +177,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     for (auto& cap : appState.cameraCaps) cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
-    #endif 
-    for (auto& thread : threads) thread.interrupt();
-    for (auto& thread : threads) {
-        bool suscess = thread.try_join_for(boost::chrono::seconds(5));
-        if (!suscess) pthread_kill(thread.native_handle(), 9); // send SIGKILL
-    } 
-
+    #endif
     exit(0);
     co_return 0; 
 }
