@@ -42,7 +42,7 @@ class World {
     typedef std::vector<RobotPose> CordinateList; 
     struct Group {
         RobotPose cord; 
-        size_t count; // used to determine the best cord
+        int count; // used to determine the best cord
     }; 
     // Typedefs
 
@@ -58,8 +58,8 @@ class World {
 
         groups.push_back(Group {.cord = cords[0], .count = 1}); // initialize with first cordinate 
 
-        size_t totalNumOfCords = cords.size(); 
-        for (size_t i = 0; i < totalNumOfCords; i++) {
+        int totalNumOfCords = cords.size(); 
+        for (int i = 0; i < totalNumOfCords; i++) {
             RobotPose current = cords[i]; 
 
             // calculate distance from current cord to all know groups 
@@ -70,10 +70,10 @@ class World {
 
             // assign current cord to a group or make a new group based on distance
             bool isNewGroup = true; 
-            size_t groupIndexToJoin = 0;
+            int groupIndexToJoin = 0;
 
-            size_t totalNumOfGroups = groups.size(); // distances have same size as groups
-            for (size_t i = 0; i < totalNumOfGroups; i++) {
+            int totalNumOfGroups = groups.size(); // distances have same size as groups
+            for (int i = 0; i < totalNumOfGroups; i++) {
                 double d = distances[i]; 
                 if (d > limitRadiCM) {
                     groupIndexToJoin = i; 
@@ -97,10 +97,10 @@ class World {
     }
 
     static RobotPose FindBestCord(const std::vector<Group>& groups) {
-        size_t bestResIndex = 0; 
-        size_t lastBestScore = 0;
-        size_t numOfGroups = groups.size();  
-        for (size_t i = 0; i < numOfGroups; i++) {
+        int bestResIndex = 0; 
+        int lastBestScore = 0;
+        int numOfGroups = groups.size();  
+        for (int i = 0; i < numOfGroups; i++) {
             Group g = groups[i]; 
             if (g.count > lastBestScore) {
                 bestResIndex = i; 

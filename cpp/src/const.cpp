@@ -9,7 +9,7 @@ using namespace std::literals::chrono_literals;
 namespace K {
 
 auto APRILTAG_LOOP_UPDATE_INTERVAL = boost::chrono::milliseconds(70); 
-size_t NT_UPDATES_PER_SECOND = 11;
+int NT_UPDATES_PER_SECOND = 11;
 
 cv::Size2d PROC_FRAME_SIZE (640, 480); 
 

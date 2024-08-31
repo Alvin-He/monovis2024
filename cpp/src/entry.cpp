@@ -25,7 +25,7 @@ namespace PO = boost::program_options;
 
 // maintaines references to states that's needed to run various tasks
 struct AppState { // resources should be std::moved into here
-    size_t numCameras = 0;
+    int numCameras = 0;
 
     std::vector<Conf::CameraConfig> cameraConfigs; 
 
