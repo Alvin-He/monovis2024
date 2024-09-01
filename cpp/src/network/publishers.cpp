@@ -25,14 +25,15 @@ namespace Publishers
             ApriltagPosePublisher(const std::string UUID, std::shared_ptr<nt::NetworkTable> root) {
                 this->detectorTable = root->GetSubTable("Apriltag")->GetSubTable(UUID); 
             }
-            void operator()(std::vector<ApriltagPose> poses, int64_t timeStamp) {
+            cobalt::detached operator()(std::vector<ApriltagPose> poses, int64_t timeStamp) {
                 for (auto &pose : poses) {
                     auto tab = this->detectorTable->GetSubTable(std::to_string(pose.id));
                     tab->PutNumber("x", pose.pose.x); 
                     tab->PutNumber("y", pose.pose.y);
                     tab->PutNumber("r", pose.pose.rot);
                     tab->PutNumber("ts", timeStamp);
-                }
+                };
+                co_return;
             };
         };
     }

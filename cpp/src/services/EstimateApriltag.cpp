@@ -23,8 +23,6 @@ namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 namespace PO = boost::program_options;
 
-
-bool isFlagExit = false; 
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
     std::string UUID;
@@ -95,24 +93,38 @@ cobalt::main co_main(int argc, char* argv[]) {
     Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
     
     // signal handlers
-    std::signal(SIGINT, [](int i){ isFlagExit = true; }); 
-    std::signal(SIGTERM, [](int i){ isFlagExit = true; }); 
-    std::signal(SIGABRT, [](int i){ isFlagExit = true; }); 
+    std::signal(SIGINT, [](int i){ f_exit = true; }); 
+    std::signal(SIGTERM, [](int i){ f_exit = true; }); 
+    std::signal(SIGABRT, [](int i){ f_exit = true; }); 
 
     // main program loop
     // try {
-    fmt::println("starting main program loop");
-    while (!isFlagExit)
+    // fmt::println("starting main program loop");
+
+    // std::vector<cv::Mat> frameBufs;
+    // frameBufs.push_back(co_await cameraReader.PromiseRead()); 
+    // frameBufs.push_back(co_await cameraReader.PromiseRead());
+    // std::vector<int64_t> timeStampBufs;
+    // timeStampBufs.push_back(0); timeStampBufs.push_back(0);
+    // std::atomic<int> usuable = 1; 
+    // cameraReader.ReadLoop(frameBufs, timeStampBufs, usuable); 
+
+    
+    while (!f_exit)
     {   
         #ifdef DEBUG
         boost::timer::cpu_timer timer; 
         timer.start(); 
         #endif 
+        // int index = usuable;
+        // cv::Mat frame = frameBufs[index]; 
+        // auto ts = timeStampBufs[index];
 
-        cv::Mat frame = co_await cameraReader.PromiseRead(); 
+        cv::Mat frame = co_await cameraReader.PromiseRead();
         auto ts = NetworkTime::Now();
         frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
-        
+        // fmt::println("IO & PREPROC Time: {}ms", timer.elapsed().wall/1000000);
+
         Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
 
         std::vector<Publishers::Internal::ApriltagPose> poses;
@@ -137,12 +149,12 @@ cobalt::main co_main(int argc, char* argv[]) {
     
     // exit handling 
     fmt::println("Exiting..."); 
+
     ntInst.StopClient(); 
     cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-     
 
     co_return 0; 
 }

@@ -29,13 +29,13 @@
         },
 
         {
-            "name": "(gdb) Launch serverAsync",
+            "name": "(gdb) Launch service apriltag",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/serverAsync",
+            "program": "${workspaceFolder}/build/apriltag_service",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
