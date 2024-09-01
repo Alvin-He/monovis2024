@@ -23,36 +23,29 @@ namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
 namespace PO = boost::program_options;
 
-// maintaines references to states that's needed to run various tasks
-struct AppState { // resources should be std::moved into here
-    int numCameras = 0;
-
-    std::vector<Conf::CameraConfig> cameraConfigs; 
-
-    // Long live objects, these are just held for ownership and no one really uses them
-    std::vector<cv::VideoCapture> cameraCaps; 
-};
 
 bool isFlagExit = false; 
 cobalt::main co_main(int argc, char* argv[]) {  
-    AppState appState {}; 
-
     // cli argument parsing
-    std::string configFilePath; 
+    std::string UUID;
     std::string ntServerIP; 
+    uint ntServerPort; 
     int cameraID; 
     std::string cameraCalibrationFilePath;
 
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("config,c", 
-            PO::value<std::string>(&configFilePath)
-            ->default_value("config.toml"), 
-            "path to service config file")
+        ("uuid,u", 
+            PO::value<std::string>(&UUID), 
+            "service uinque resource ID/name")
         ("nt-ip,S", 
             PO::value<std::string>(&ntServerIP)
             ->default_value("127.0.0.1"), 
+            "networktables server ip address")
+        ("nt-port,P", 
+            PO::value<uint>(&ntServerPort)
+            ->default_value(5810), 
             "networktables server ip address")
         ("camera-id,I", 
             PO::value<int>(&cameraID)
@@ -72,13 +65,6 @@ cobalt::main co_main(int argc, char* argv[]) {
         co_return 1; 
     } 
 
-    // toml parsing
-    auto config = Conf::LoadToml(configFilePath); 
-    Conf::ServiceConfig selfServiceConfig = Conf::ParseServiceConfig(config);
-    for (auto file : selfServiceConfig.Cameras_configFiles) {
-        appState.cameraConfigs.push_back(Conf::ParseCameraConfig(Conf::LoadToml(file))); 
-    }
-    
     // global apriltagDetector parameters
     cv::aruco::DetectorParameters APRILTAG_DETECTOR_PARAMS;
     // max smaller than 5 seems to work pretty well
@@ -90,14 +76,12 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // init network tables
     nt::NetworkTableInstance ntInst = nt::NetworkTableInstance::GetDefault();
-    ntInst.StartClient4("monovis"); 
-    ntInst.SetServer(selfServiceConfig.Comms_NetworkTable_server.c_str(), selfServiceConfig.Comms_NetworkTable_port);
+    ntInst.StartClient4("service-apriltag" + UUID); 
+    ntInst.SetServer(ntServerIP.c_str(), ntServerPort);
     NetworkTime::StartPeriodicLatencyUpdate();
-    auto appNetworkTable = ntInst.GetTable("SmartDashboard")->GetSubTable("Vision");
-    auto robotPosTable = appNetworkTable->GetSubTable("RobotPos"); 
-    auto apriltagGroupTable = appNetworkTable->GetSubTable("Apriltags"); 
+    auto ntInternalRoot = ntInst.GetTable("Monovis");
 
-    auto robotPosePublisher = Publishers::RobotPosePublisher(robotPosTable); 
+    Publishers::Internal::ApriltagPosePublisher ntApriltagPublisher {UUID, ntInternalRoot}; 
 
     Apriltag::World::World robotTracking; 
     
@@ -120,31 +104,29 @@ cobalt::main co_main(int argc, char* argv[]) {
     fmt::println("starting main program loop");
     while (!isFlagExit)
     {   
+        #ifdef DEBUG
         boost::timer::cpu_timer timer; 
         timer.start(); 
-        
+        #endif 
+
         cv::Mat frame = co_await cameraReader.PromiseRead(); 
         auto ts = NetworkTime::Now();
         frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
-        #ifdef GUI
-        cv::imshow("test", frame);
-        #endif
         
         Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
-        robotTracking.Update(res);
-        fmt::println("time used:{}ms", timer.elapsed().wall/1000000.0); 
-        Apriltag::World::RobotPose robotPose = robotTracking.GetRobotPose(); 
-        // fmt::println("x: {}, y:{}, r:{}", robotPose.x, robotPose.y, robotPose.rot);
-//        fmt::println("distance: {}", std::sqrt(std::pow(robotPose.x, 2) + std::pow(robotPose.y, 2))); 
-        co_await robotPosePublisher(Publishers::RobotPosePacket {
-            .pose = robotPose, 
-            .timestamp = ts
-        }); 
 
-        // for (Apriltag::EstimationResult estimation : res) {
-        //     fmt::println("rot:{}", estimation.camToTagRvec);
-        //     fmt::println("trans:{}", estimation.camToTagTvec); 
-        // }
+        std::vector<Publishers::Internal::ApriltagPose> poses;
+        for(auto& esti : res) {
+            poses.push_back(Publishers::Internal::ApriltagPose {
+                .id = esti.id, 
+                .pose = Apriltag::World::RobotPoseFromEstimationResult(std::move(esti))
+            });
+        }
+        ntApriltagPublisher(std::move(poses), ts);
+
+        #ifdef DEBUG
+        fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000);
+        #endif
         #ifdef GUI
         cv::waitKey(1);
         #endif

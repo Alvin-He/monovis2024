@@ -60,3 +60,18 @@ target_link_libraries(prog
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 )
+
+add_executable(apriltag_service src/services/EstimateApriltag.cpp)
+target_compile_options(apriltag_service 
+	PUBLIC "-fcoroutines")
+target_link_libraries(apriltag_service
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+)
