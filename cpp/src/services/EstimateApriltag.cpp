@@ -11,13 +11,7 @@
 #include "apriltag/apriltag.hpp"
 #include "network/publishers.cpp"
 #include "network/network_time.cpp"
-
-#include "ntcore/networktables/NetworkTable.h"
-#include "ntcore/networktables/NetworkTableInstance.h"
-
-#include "conf/parser.cpp"
-#include "conf/serviceConfigDef.cpp"
-#include "conf/cameraConfigDef.cpp"
+#include "network/redis.cpp"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -26,8 +20,8 @@ namespace PO = boost::program_options;
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
     std::string UUID;
-    std::string ntServerIP; 
-    uint ntServerPort; 
+    std::string ntInternalIP; 
+    uint ntInternalPort; 
     int cameraID; 
     std::string cameraCalibrationFilePath;
 
@@ -35,16 +29,17 @@ cobalt::main co_main(int argc, char* argv[]) {
     cliOptions.add_options()
         ("help", "show help message")
         ("uuid,u", 
-            PO::value<std::string>(&UUID), 
+            PO::value<std::string>(&UUID)
+            ->default_value("unnamed"), 
             "service uinque resource ID/name")
-        ("nt-ip,S", 
-            PO::value<std::string>(&ntServerIP)
+        ("nt-internal", 
+            PO::value<std::string>(&ntInternalIP)
             ->default_value("127.0.0.1"), 
-            "networktables server ip address")
-        ("nt-port,P", 
-            PO::value<uint>(&ntServerPort)
+            "monovis internal networktables server ip address")
+        ("nt-internal-port", 
+            PO::value<uint>(&ntInternalPort)
             ->default_value(5810), 
-            "networktables server ip address")
+            "monovis internal networktables server ip address")
         ("camera-id,I", 
             PO::value<int>(&cameraID)
             ->default_value(0),
@@ -72,26 +67,23 @@ cobalt::main co_main(int argc, char* argv[]) {
     APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
     // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
 
-    // init network tables
-    nt::NetworkTableInstance ntInst = nt::NetworkTableInstance::GetDefault();
-    ntInst.StartClient4("service-apriltag" + UUID); 
-    ntInst.SetServer(ntServerIP.c_str(), ntServerPort);
-    NetworkTime::StartPeriodicLatencyUpdate();
-    auto ntInternalRoot = ntInst.GetTable("Monovis");
+    // init RedisDB access
+    co_await RedisDB::init("127.0.0.1", "6379", UUID); 
+    co_await RedisDB::ping();
 
-    Publishers::Internal::ApriltagPosePublisher ntApriltagPublisher {UUID, ntInternalRoot}; 
-
-    Apriltag::World::World robotTracking; 
-    
+    // bootstrap camera
     cv::VideoCapture cap{cameraID}; 
-
     Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
     cameraData.id = cameraID; 
     Camera::AdjustCameraDataToForFrameSize(cameraData, cap, K::PROC_FRAME_SIZE);
-
     Camera::FrameGenerator cameraReader {cap};
+
+    // construct estimator
     Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
-    
+
+    // construct publisher
+    Publishers::Internal::ApriltagPosePublisher ntApriltagPublisher {UUID}; 
+
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 
     std::signal(SIGTERM, [](int i){ f_exit = true; }); 
@@ -99,26 +91,13 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // main program loop
     // try {
-    // fmt::println("starting main program loop");
-
-    // std::vector<cv::Mat> frameBufs;
-    // frameBufs.push_back(co_await cameraReader.PromiseRead()); 
-    // frameBufs.push_back(co_await cameraReader.PromiseRead());
-    // std::vector<int64_t> timeStampBufs;
-    // timeStampBufs.push_back(0); timeStampBufs.push_back(0);
-    // std::atomic<int> usuable = 1; 
-    // cameraReader.ReadLoop(frameBufs, timeStampBufs, usuable); 
-
-    
+    fmt::println("starting main program loop");
     while (!f_exit)
     {   
         #ifdef DEBUG
         boost::timer::cpu_timer timer; 
         timer.start(); 
         #endif 
-        // int index = usuable;
-        // cv::Mat frame = frameBufs[index]; 
-        // auto ts = timeStampBufs[index];
 
         cv::Mat frame = co_await cameraReader.PromiseRead();
         auto ts = NetworkTime::Now();
@@ -134,10 +113,12 @@ cobalt::main co_main(int argc, char* argv[]) {
                 .pose = Apriltag::World::RobotPoseFromEstimationResult(std::move(esti))
             });
         }
-        ntApriltagPublisher(std::move(poses), ts);
+        co_await ntApriltagPublisher(std::move(poses), ts);
+        // co_await *lastPubTask;
+        // lastPubTask = std::make_unique<cobalt::promise<void>>(ntApriltagPublisher(std::move(poses), ts));
 
         #ifdef DEBUG
-        fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000);
+        fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000.0);
         #endif
         #ifdef GUI
         cv::waitKey(1);
@@ -150,11 +131,10 @@ cobalt::main co_main(int argc, char* argv[]) {
     // exit handling 
     fmt::println("Exiting..."); 
 
-    ntInst.StopClient(); 
     cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-
+    std::terminate(); 
     co_return 0; 
 }

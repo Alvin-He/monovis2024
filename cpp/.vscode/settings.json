@@ -100,5 +100,6 @@
 		"__memory": "cpp",
 		"filesystem": "cpp",
 		"locale": "cpp"
-	}
+	},
+	"C_Cpp.errorSquiggles": "enabled"
 }

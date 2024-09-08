@@ -38,28 +38,28 @@ set_property(TARGET boost_thread PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/
 add_library(boost_chrono STATIC IMPORTED)
 set_property(TARGET boost_chrono PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/boost/libboost_chrono.a)
 
-
-find_package (Eigen3 3.4 REQUIRED NO_MODULE)
+find_package(OpenSSL REQUIRED)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED 
 	# PATHS ${CMAKE_SOURCE_DIR}/../bin/opencv/lib/cmake/opencv4/
 	)
 find_package(Threads REQUIRED)
 find_package(ntcore REQUIRED)
 
-add_executable(prog src/entry.cpp)
-target_compile_options(prog 
-	PUBLIC "-fcoroutines")
-target_link_libraries(prog
-	PRIVATE boost_cobalt
-	PRIVATE boost_program_options
-	PRIVATE boost_thread
-	PRIVATE boost_chrono
-	PRIVATE ${OpenCV_LIBS}
-	PRIVATE Threads::Threads
-	PRIVATE boost_timer
-	PRIVATE Eigen3::Eigen
-	PRIVATE ntcore
-)
+# add_executable(prog src/entry.cpp)
+# target_compile_options(prog 
+# 	PUBLIC "-fcoroutines")
+# target_link_libraries(prog
+# 	PRIVATE boost_cobalt
+# 	PRIVATE boost_program_options
+# 	PRIVATE boost_thread
+# 	PRIVATE boost_chrono
+# 	PRIVATE ${OpenCV_LIBS}
+# 	PRIVATE Threads::Threads
+# 	PRIVATE boost_timer
+# 	PRIVATE Eigen3::Eigen
+# 	PRIVATE ntcore
+# )
 
 add_executable(apriltag_service src/services/EstimateApriltag.cpp)
 target_compile_options(apriltag_service 
@@ -74,4 +74,37 @@ target_link_libraries(apriltag_service
 	PRIVATE boost_timer
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
+)
+
+add_executable(pose_service src/services/PoseTracker.cpp)
+target_compile_options(pose_service 
+	PUBLIC "-fcoroutines")
+target_link_libraries(pose_service
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
+)
+
+add_executable(redis_test src/redis.test.cpp)
+target_compile_options(redis_test 
+	PUBLIC "-fcoroutines")
+target_link_libraries(redis_test
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
 )
