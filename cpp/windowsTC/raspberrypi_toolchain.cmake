@@ -29,11 +29,12 @@ set(LD_PATH ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu)
 set(CMAKE_PATH ${LD_PATH}/cmake/)
 
 # Additional flags (optional, may vary depending on the project)
-set(CMAKE_C_FLAGS "--sysroot=${CMAKE_SYSROOT}")
-set(CMAKE_CXX_FLAGS "--sysroot=${CMAKE_SYSROOT}")
+set(CMAKE_C_FLAGS_INIT "-fPIC")
+set(CMAKE_CXX_FLAGS_INIT "-fPIC")
+set(CMAKE_Fortran_FLAGS_INIT "-fPIC")
 
 # # Set linker flags (important for linking with sysroot libraries)
-set(CMAKE_EXE_LINKER_FLAGS "--sysroot=\"${CMAKE_SYSROOT}\"")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "--sysroot=\"${CMAKE_SYSROOT}\"")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS=ON)
 # Ensure CMake searches for programs and libraries inside the sysroot
