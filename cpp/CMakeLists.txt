@@ -13,7 +13,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CUDAToolkit_ROOT /usr/local/cuda)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-set(NTCORE_INSTALL_PATH /usr/local/ntcore)
+set(NTCORE_INSTALL_PATH "${CMAKE_SYSROOT}/usr/local/ntcore")
 set(ntcore_DIR ${NTCORE_INSTALL_PATH}/share/ntcore)
 set(wpiutil_DIR ${NTCORE_INSTALL_PATH}/share/wpiutil)
 set(wpinet_DIR ${NTCORE_INSTALL_PATH}/share/wpinet)

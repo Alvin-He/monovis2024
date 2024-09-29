@@ -11,6 +11,8 @@ sudo apt install wget tar -y
 sudo apt install build-essential cmake pkg-config unzip yasm git checkinstall -y
 fi
 
+sudo sudo apt-get install libopenblas-dev liblapack-dev -y
+
 sudo apt install libjpeg-dev libpng-dev libtiff-dev -y 
 sudo apt install libavcodec-dev libavformat-dev libswscale-dev -y 
 sudo apt install libxvidcore-dev x264 libx264-dev libfaac-dev libmp3lame-dev libtheora-dev -y
