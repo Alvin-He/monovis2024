@@ -12,6 +12,7 @@ set(CMAKE_CROSSCOMPILING TRUE)
 # Define the path to the toolchain
 set(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc-12")
 set(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++-12")
+set(CMAKE_Fortran_COMPILER "aarch64-linux-gnu-gfortran-12")
 set(CMAKE_AR "aarch64-linux-gnu-ar")
 set(CMAKE_AS "aarch64-linux-gnu-as")
 set(CMAKE_NM "aarch64-linux-gnu-nm")
