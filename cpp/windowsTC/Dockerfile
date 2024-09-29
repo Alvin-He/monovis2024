@@ -17,6 +17,8 @@ RUN apt install gcc-12-aarch64-linux-gnu g++-12-aarch64-linux-gnu gfortran-12-aa
 
 RUN apt install cmake -y
 
+RUN apt install wget unzip tar git -y
+
 # sysroot mount point
 VOLUME [ "/sysroot" ]
 # project source code directory
