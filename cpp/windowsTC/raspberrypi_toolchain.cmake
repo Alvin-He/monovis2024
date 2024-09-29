@@ -21,10 +21,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Tell CMake to use the sysroot for finding libraries and headers
 set(CMAKE_SYSROOT "/sysroot" CACHE INTERNAL "" FORCE)
-set(PKG_CONFIG_LIBDIR "${CMAKE_SYSROOT}" CACHE INTERNAL "" FORCE)
 set(CMAKE_SYSROOT_COMPILE "${CMAKE_SYSROOT}" CACHE INTERNAL "" FORCE)
 set(CMAKE_SYSROOT_LINK "${CMAKE_SYSROOT}" CACHE INTERNAL "" FORCE)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/installed/arm64" CACHE INTERNAL "" FORCE)
+
+set(__tc_pkg_libdir_default="/usr/local/lib/aarch64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig")
+string(REPLACE ":/" ":${CMAKE_SYSROOT}/" __tc_pkg_libdir_default "__tc_pkg_libdir_default")
+set(PKG_CONFIG_LIBDIR "${CMAKE_SYSROOT}/${__tc_pkg_libdir_default}" CACHE INTERNAL "" FORCE)
 
 set(LD_PATH ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu)
 set(CMAKE_PATH ${LD_PATH}/cmake/)
