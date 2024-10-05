@@ -2,11 +2,14 @@
 #include "common.cpp"
 #include "global.cpp"
 #include <opencv4/opencv2/opencv.hpp>
-#include <opencv4/opencv2/cudawarping.hpp>
 #include <boost/cobalt.hpp>
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 #include "network/network_time.cpp"
+
+#ifdef HAS_CUDA
+#include <opencv4/opencv2/cudawarping.hpp>
+#endif
 namespace cobalt = boost::cobalt;
 
 namespace Camera

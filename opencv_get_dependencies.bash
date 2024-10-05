@@ -24,6 +24,4 @@ sudo apt-get install libtbb-dev -y
 sudo apt-get install libatlas-base-dev gfortran -y 
 sudo apt-get install libeigen3-dev -y 
 
-sudo apt install libeigen3-dev
-
 sudo apt install python3 python3-pip python3-numpy -y
