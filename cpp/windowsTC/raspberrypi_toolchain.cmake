@@ -24,6 +24,10 @@ set(CMAKE_SYSROOT "/sysroot" CACHE INTERNAL "" FORCE)
 set(CMAKE_SYSROOT_COMPILE "${CMAKE_SYSROOT}" CACHE INTERNAL "" FORCE)
 set(CMAKE_SYSROOT_LINK "${CMAKE_SYSROOT}" CACHE INTERNAL "" FORCE)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/installed/arm64" CACHE INTERNAL "" FORCE)
+include_directories(
+    SYSTEM "${CMAKE_SYSROOT}/usr/local/include"
+    SYSTEM "${CMAKE_SYSROOT}/usr/include"
+)
 
 set(PKG_CONFIG_LIBDIR "${CMAKE_SYSROOT}/usr/local/lib/aarch64-linux-gnu/pkgconfig:${CMAKE_SYSROOT}/usr/local/lib/pkgconfig:${CMAKE_SYSROOT}/usr/local/share/pkgconfig:${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig:${CMAKE_SYSROOT}/usr/lib/pkgconfig:${CMAKE_SYSROOT}/usr/share/pkgconfig" CACHE INTERNAL "" FORCE)
 

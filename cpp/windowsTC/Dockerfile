@@ -19,9 +19,12 @@ RUN apt install cmake -y
 
 RUN apt install wget unzip tar git -y
 
+RUN apt install patchelf file -y 
+
 # sysroot mount point
 VOLUME [ "/sysroot" ]
+
 # project source code directory
-VOLUME [ "/src" ]
+WORKDIR /work
 
 CMD [ "bash" ]
