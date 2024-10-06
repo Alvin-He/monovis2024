@@ -33,22 +33,30 @@ namespace RedisDB {
         co_return;
     };
 
+    cobalt::promise<redis::generic_response> send(redis::request req) {
+        redis::generic_response res; 
+        try { co_await m_connection->async_exec(req, res, cobalt::use_op); }
+        catch(...) {}
+        co_return res; 
+    }
+
+    template <typename T>
+    cobalt::promise<redis::response<T>> send(redis::request req) {
+        redis::response<T> res; 
+        try { co_await m_connection->async_exec(req, res, cobalt::use_op); }
+        catch(...) {}
+        co_return res; 
+    }
+
     cobalt::promise<void> ping() {
         redis::request req; 
         req.push("PING", m_config->clientname + " PING");
 
-        redis::response<std::string> res; 
-        co_await m_connection->async_exec(req, res, cobalt::use_op);
+        redis::response<std::string> res = co_await send<std::string>(req); 
 
         fmt::println("PING: {}", std::get<0>(res).value()); 
         co_return; 
     };
-
-    cobalt::promise<redis::generic_response> send(redis::request req) {
-        redis::generic_response res; 
-        co_await m_connection->async_exec(req, res, cobalt::use_op); 
-        co_return res; 
-    }
 
     constexpr int scanDataSectionOffset = 3;
     // scans database for keys matching pattern, returning all matched keys
