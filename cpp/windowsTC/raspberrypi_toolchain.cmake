@@ -27,6 +27,8 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/installed/arm64" CACHE INTERNAL ""
 include_directories(
     SYSTEM "${CMAKE_SYSROOT}/usr/local/include"
     SYSTEM "${CMAKE_SYSROOT}/usr/include"
+    SYSTEM "${CMAKE_SYSROOT}/sysroot/usr/include/aarch64-linux-gnu"
+    SYSTEM "${CMAKE_SYSROOT}/sysroot/usr/include"
 )
 
 set(PKG_CONFIG_LIBDIR "${CMAKE_SYSROOT}/usr/local/lib/aarch64-linux-gnu/pkgconfig:${CMAKE_SYSROOT}/usr/local/lib/pkgconfig:${CMAKE_SYSROOT}/usr/local/share/pkgconfig:${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig:${CMAKE_SYSROOT}/usr/lib/pkgconfig:${CMAKE_SYSROOT}/usr/share/pkgconfig" CACHE INTERNAL "" FORCE)
@@ -37,12 +39,12 @@ set(CMAKE_PATH ${LD_PATH}/cmake/)
 # Additional flags (optional, may vary depending on the project)
 set(CMAKE_C_FLAGS_INIT "-fPIC")
 set(CMAKE_CXX_FLAGS_INIT "-fPIC")
-set(CMAKE_Fortran_FLAGS_INIT "-fPIC")
+# set(CMAKE_C_FLAGS_INIT "-fPIC -lc -lm -lgcc -lgcc_s -Wl,--rpath=${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ -Wl,--dynamic-linker=${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1")
+# set(CMAKE_CXX_FLAGS_INIT "-fPIC -lc -lm -lgcc -lgcc_s -lstdc++ -Wl,--rpath=${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ -Wl,--dynamic-linker=${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1")
+set(CMAKE_Fortran_FLAGS_INIT "-fPIC ")
 
-# # Set linker flags (important for linking with sysroot libraries)
-set(CMAKE_EXE_LINKER_FLAGS_INIT "--sysroot=\"${CMAKE_SYSROOT}\"")
+set(CMAKE_BUILD_RPATH "$ORIGIN/libs")
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS=ON)
 # Ensure CMake searches for programs and libraries inside the sysroot
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
@@ -50,3 +52,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 
+## project specific config vars
+set(Boost_INCLUDE_DIRS ${CMAKE_SYSROOT}/usr/local/include/boost)
+set(Boost_LIBRARY_DIRS ${CMAKE_SYSROOT}/usr/local/lib/boost)

@@ -20,14 +20,35 @@ done;
 # script will now fail on any error
 set -e
 
-echo "copying artifacts"
-for file in "./build/artifacts"/*; do 
-    cp -v -r "$file" "$deployLoc"
+echo "copying artifacts from ./cross/artifacts"
+for file in "./cross/artifacts"/*; do 
+    cp -v -r --no-preserve=ownership,timestamps "$file" "$deployLoc"
 done; 
 
 echo "copying configs"
 for file in "./config"/*; do 
-    cp -v -r "$file" "$deployLoc"
+    cp -v -r --no-preserve=ownership,timestamps "$file" "$deployLoc"
 done; 
+
+echo "copying libraries"
+echo "copying build server aarch64-linux-gnu"
+mkdir "$deployLoc/libs/"
+# for file in "/usr/aarch64-linux-gnu/lib/*\.so\.*"; do sharedLibs=$(echo $file); done
+# for file in $sharedLibs; do 
+#     cp -a -v --no-preserve=ownership,timestamps "$file" "$deployLoc/libs/"
+# done;
+# echo "patching copied libraries"
+# for file in "$deployLoc/libs"/*; do 
+#     patchelf --debug --set-rpath "\$ORIGIN" "$file"
+# done;
+
+for file in "/usr/aarch64-linux-gnu/lib"/*; do 
+    cp -a -v --no-preserve=ownership,timestamps "$file" "$deployLoc/libs/"
+done;
+echo "patching copied libraries"
+for file in "$deployLoc/libs/*\.so\.*"; do sharedLibs=$(echo $file); done
+for file in $sharedLibs; do 
+    patchelf --debug --set-rpath "\$ORIGIN" "$file"
+done;
 
 echo "finished"
