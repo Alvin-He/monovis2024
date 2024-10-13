@@ -28,10 +28,10 @@ namespace RedisDB {
             .clientname = name, 
             .health_check_id = name,
             .log_prefix = name, 
-            .resolve_timeout = 1s, 
-            .connect_timeout = 1s,
+            .resolve_timeout = 100ms, 
+            .connect_timeout = 100ms,
             .health_check_interval = 3s,
-            .reconnect_wait_interval = 1s,       
+            .reconnect_wait_interval = 20ms,       
         });
 
 
