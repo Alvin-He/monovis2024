@@ -25,10 +25,10 @@ namespace Publishers
         };
         class ApriltagPosePublisher {
             private: 
-            std::string pubUUID; 
+            std::string m_pubUUID; 
             public:
             ApriltagPosePublisher(const std::string UUID) {
-                this->pubUUID = UUID; 
+                this->m_pubUUID = UUID; 
             }
 
             cobalt::promise<void> operator()(std::vector<ApriltagPose> poses, int64_t timeStamp) {
@@ -41,13 +41,13 @@ namespace Publishers
                 }
 
                 // generate redis key for this entry
-                std::string key = fmt::format(FMT_COMPILE("Apriltag:{}:{}"), timeStamp, this->pubUUID);
+                std::string key = fmt::format(FMT_COMPILE("Apriltag:{}:{}"), timeStamp, this->m_pubUUID);
 
                 // construct and send the request
                 redis::request req; 
                 req.push("SET", key, outputBuf.str(), "PX", K::POSE_TIME_CONSIDERATION);
-                co_await RedisDB::send(req); // detached send, don't care about result
-
+                co_await RedisDB::noQueueSendDiscard(req); // detached send, don't care about result
+                // RedisDB::send(req);
                 // for (auto &pose : poses) {
                 //     auto tab = this->detectorTable->GetSubTable(std::to_string(pose.id));
                 //     tab->PutNumber("x", pose.pose.x); 
@@ -79,7 +79,7 @@ namespace Publishers
                 };
 
                 // request field values
-                auto responses = *co_await RedisDB::send(std::move(req)); 
+                auto responses = *co_await RedisDB::send(req); 
 
                 // deserialize all the pose info / values
                 for (auto& res : responses) {

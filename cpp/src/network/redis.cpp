@@ -5,12 +5,15 @@
 #include "const.cpp"
 #include <boost/redis.hpp>
 #include <boost/redis/src.hpp>
+#include <networktables/Topic.h>
 
 namespace redis = boost::redis;
 
 namespace RedisDB {
     std::shared_ptr<redis::config> m_config;
     std::unique_ptr<redis::connection> m_connection = nullptr; 
+    std::unique_ptr<cobalt::promise<void>> m_NQSendLastPromise;
+    int failsendcount = 0;
 
     cobalt::promise<void> init(std::string ip = "127.0.0.1", std::string port = "6379", std::string name = "monovis-redis-unnamed") {
         if (m_connection) {
@@ -18,34 +21,68 @@ namespace RedisDB {
             co_return; 
         }
 
+        
+
         m_config = std::make_shared<redis::config> (redis::config {
             .addr = redis::address {.host = ip, .port = port}, 
             .clientname = name, 
             .health_check_id = name,
             .log_prefix = name, 
-            .health_check_interval = 0s
+            .resolve_timeout = 1s, 
+            .connect_timeout = 1s,
+            .health_check_interval = 3s,
+            .reconnect_wait_interval = 1s,       
         });
+
 
         m_connection = std::make_unique<redis::connection>(co_await cobalt::this_coro::executor); 
         // run detached server loop
-        [&] () -> cobalt::detached { co_await m_connection->async_run(*m_config, {}, cobalt::use_op); }(); 
-        fmt::println("redis connected");
+        [&] () -> cobalt::detached { co_await m_connection->async_run(*m_config, redis::logger(redis::logger::level::debug), cobalt::use_op); }(); 
+
+        
+        fmt::println("redis initiated");
+
+        // initialize to a no-op immediate completed promise
+        m_NQSendLastPromise = std::make_unique<cobalt::promise<void>>([]() -> cobalt::promise<void>{co_return;}());
         co_return;
     };
 
-    cobalt::promise<redis::generic_response> send(redis::request req) {
+    cobalt::promise<redis::generic_response> send(redis::request& req) {
+        req.get_config().cancel_if_not_connected = true;
+
         redis::generic_response res; 
         try { co_await m_connection->async_exec(req, res, cobalt::use_op); }
-        catch(...) {}
+        catch(...) {
+            fmt::println("async_exec failed!, #{}", ++failsendcount); 
+        }
         co_return res; 
     }
 
     template <typename T>
-    cobalt::promise<redis::response<T>> send(redis::request req) {
+    cobalt::promise<redis::response<T>> send(redis::request& req) {
+        req.get_config().cancel_if_not_connected = true;
+
         redis::response<T> res; 
         try { co_await m_connection->async_exec(req, res, cobalt::use_op); }
-        catch(...) {}
+        catch(...) {
+            fmt::println("async_exec failed!, #{}", ++failsendcount); 
+        }
         co_return res; 
+    }
+
+    cobalt::promise<void> sendDiscard(redis::request& req) {
+        co_await send(req); 
+        co_return;
+    }
+
+    cobalt::promise<void> noQueueSendDiscard(redis::request& req) {
+        if (m_NQSendLastPromise->ready()) { 
+            m_NQSendLastPromise = std::make_unique<cobalt::promise<void>>(std::move(sendDiscard(req)));
+        } // else wait out the promise
+        co_await *m_NQSendLastPromise;
+        // then fire the request 
+        m_NQSendLastPromise = std::make_unique<cobalt::promise<void>>(std::move(sendDiscard(req)));
+        co_return;
     }
 
     cobalt::promise<void> ping() {

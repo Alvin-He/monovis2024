@@ -10,56 +10,57 @@
 #include <fmt/include/fmt/ranges.h>
 #include <boost/math/distributions.hpp>
 #include <cmath>
+#include <vector>
 namespace Apriltag::World {
 
 // Solvers
-static std::vector<double> CamRelativeToAbsoulote(double cx, double cy, double tx, double ty, double tYaw) {
+static std::array<double, 2> CamRelativeToAbsoulote(double cx, double cy, double tx, double ty, double tYaw) {
     double theta = h::NormalizeAngle(180.0 - tYaw); 
-    std::vector<double> cords = h::rotatePoint(cx, cy, theta); 
-    return std::vector<double> {tx - cords[0], ty - cords[1]}; 
+    auto cords = h::rotatePoint(cx, cy, theta); 
+    return std::array<double, 2> {tx - cords[0], ty - cords[1]}; 
 } // CamRelativeToAbsoulote
 
-static std::vector<Group> GroupCords(const CordinateList& cords, double limitRadiCM = 10) {
+static std::vector<Group> GroupCords(const CordinateList& cords, double limitRadiCM = 10) {    
     std::vector<Group> groups; 
 
-    groups.push_back(Group {.cord = cords[0], .count = 1}); // initialize with first cordinate 
-
+    groups.emplace_back(cords[0], 1); // initialize with first cordinate 
     int totalNumOfCords = cords.size(); 
     for (int i = 0; i < totalNumOfCords; i++) {
+        int currentNumOfGroups = groups.size();
         RobotPose current = cords[i]; 
 
         // calculate distance from current cord to all know groups 
-        vector_d distances; 
+        std::vector<double> distances;
+        distances.reserve(currentNumOfGroups);  
         for (Group g : groups) {
-            distances.push_back(std::sqrt(std::pow(g.cord.x - current.x, 2) + std::pow(g.cord.y - current.y, 2))); 
+            // find distance of tag to each group with Pathogram Therom
+            distances.emplace_back(std::sqrt(std::pow(g.cord.x - current.x, 2) + std::pow(g.cord.y - current.y, 2))); 
         }
 
         // assign current cord to a group or make a new group based on distance
         bool isNewGroup = true; 
-        int groupIndexToJoin = 0;
-
-        int totalNumOfGroups = groups.size(); // distances have same size as groups
-        for (int i = 0; i < totalNumOfGroups; i++) {
+        // iterate through all distances to each group, check if distance < limitRadiCM
+        for (int i = 0; i < currentNumOfGroups; i++) {
             double d = distances[i]; 
-            if (d > limitRadiCM) {
-                groupIndexToJoin = i; 
-                isNewGroup = false; 
+            if (d < limitRadiCM) { // the point is close enough to the group
+                // join the group if matched 
+                Group& g = groups[i]; 
+                g.cord.x = (g.cord.x + current.x)/2; // average the old cords with the new ones
+                g.cord.y = (g.cord.y + current.y)/2;
+                // g.cord.rot = (g.cord.rot + current.rot)/2; // yaw calculations are done seperately
+                g.count += 1; // increment count
+
+                isNewGroup = false; //unmark makeNewGroup
+                break;
             }
         }
 
         if (isNewGroup) { // make new group if needed
-            groups.push_back(Group {.cord = current, .count = 1}); 
+            groups.emplace_back(current, 1); 
             continue; 
         }
-
-        // join the group if matched 
-        Group g = groups[groupIndexToJoin]; 
-        g.cord.x = (g.cord.x + current.x)/2; // average the old cords with the new ones
-        g.cord.y = (g.cord.y + current.y)/2;
-        // g.cord.rot = (g.cord.rot + current.rot)/2; // yaw calculations are done seperately
-        g.count += 1; // increment count 
     }
-    return groups; 
+    return std::move(groups); 
 }
 
 static RobotPose FindBestCord(const std::vector<Group>& groups) {
@@ -67,10 +68,10 @@ static RobotPose FindBestCord(const std::vector<Group>& groups) {
     int lastBestScore = 0;
     int numOfGroups = groups.size();  
     for (int i = 0; i < numOfGroups; i++) {
-        Group g = groups[i]; 
-        if (g.count > lastBestScore) {
+        int numTagsInGroup = groups[i].count; 
+        if (numTagsInGroup > lastBestScore) {
             bestResIndex = i; 
-            lastBestScore = g.count; 
+            lastBestScore = numTagsInGroup; 
         } // otherwise skip
     }
     return groups[bestResIndex].cord; 
@@ -78,8 +79,9 @@ static RobotPose FindBestCord(const std::vector<Group>& groups) {
 
 static double FindBestYaw(const CordinateList& cords) {
     std::vector<double> yaws;
+    yaws.reserve(cords.size());
     for (const auto& cord : cords) {
-        yaws.push_back(cord.rot); 
+        yaws.emplace_back(cord.rot); 
     }
     return h::average(h::reject_outliers_2(yaws));
 }
@@ -93,14 +95,14 @@ static RobotPose RobotPoseFromEstimationResult(const Apriltag::EstimationResult&
     double yaw; 
     
     yaw = -(*res.camToTagRvec[1]); 
-    yaw += res.cameraInfo.camToRobotPos[3] + tag.yaw; 
+    yaw += res.cameraInfo->camToRobotPos[3] + tag.yaw; 
     yaw = 180.0 - yaw; 
     yaw = h::NormalizeAngle(yaw);
 
-    double camX = *res.camToTagTvec[2] + res.cameraInfo.camToRobotPos[0]; // camera parallel/z is same as world x for horzontally mounted camera
-    double camY = *res.camToTagTvec[0] + res.cameraInfo.camToRobotPos[1]; // camera through/x is same as world y
+    double camX = *res.camToTagTvec[2] + res.cameraInfo->camToRobotPos[0]; // camera parallel/z is same as world x for horzontally mounted camera
+    double camY = *res.camToTagTvec[0] + res.cameraInfo->camToRobotPos[1]; // camera through/x is same as world y
 
-    std::vector<double> robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
+    std::array<double, 2> robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
     return RobotPose {.x = robotCords[0], .y = robotCords[1], .rot = yaw};
 }
@@ -110,7 +112,7 @@ static RobotPose RobotPoseFromEstimationResult(const Apriltag::EstimationResult&
 class World {
     public:
     // Methods
-    World() {};
+    World() = default;
 
     void Update(const Apriltag::AllEstimationResults& results) {
         CordinateList allPossibleCords; 

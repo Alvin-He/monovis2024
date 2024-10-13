@@ -10,7 +10,7 @@
 namespace Apriltag {
 
 struct EstimationResult {
-    Camera::CameraData cameraInfo; 
+    std::shared_ptr<Camera::CameraData> cameraInfo; 
     int id; 
     cv::Mat1d camToTagRvec; 
     cv::Mat1d camToTagTvec; 
@@ -19,8 +19,8 @@ typedef std::vector<EstimationResult> AllEstimationResults;
 
 class Estimator {
     public:
-        Estimator(Camera::CameraData cameraData, cv::aruco::DetectorParameters detectorParams): 
-            m_cameraData(std::move(cameraData)), 
+        Estimator(std::shared_ptr<Camera::CameraData> cameraData, cv::aruco::DetectorParameters detectorParams): 
+            m_cameraData(cameraData), 
             m_detector(
                 cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), detectorParams) 
         {
@@ -30,7 +30,6 @@ class Estimator {
         // detect an apriltag in an image
         // this method can be used in threads with out locking Estimator 
         AllEstimationResults Detect(cv::Mat image) {
-            AllEstimationResults estimations; 
 
             // detecting the tags in image
             std::vector<std::vector<cv::Point2f>> corners;
@@ -39,18 +38,21 @@ class Estimator {
             
             #if defined(DEBUG) && defined(GUI)
             cv::aruco::drawDetectedMarkers(image, corners, ids); 
-            cv::imshow(fmt::format("camera-{} markers", m_cameraData.id), image); 
+            cv::imshow(fmt::format("camera-{} markers", m_cameraData->id), image); 
             #endif
+
             // solvepnp to generate cords
             int maxI = ids.size();
+            AllEstimationResults estimations; 
+            estimations.reserve(maxI);
             for (int i = 0; i < maxI; i++) {
                 cv::Mat1d rvec;
                 cv::Mat1d tvec; 
                 cv::solvePnP(
                     m_objectPoints, 
                     corners[i], 
-                    m_cameraData.matrix, 
-                    m_cameraData.distCoeffs,
+                    m_cameraData->matrix, 
+                    m_cameraData->distCoeffs,
                     rvec, 
                     tvec); 
                 // if (!ret) continue; // solve pnp "should" always return somehting
@@ -67,12 +69,7 @@ class Estimator {
                 
                 // pamt and theta is already flat for index access
 
-                estimations.push_back(EstimationResult {
-                    .cameraInfo = m_cameraData,
-                    .id = ids[i],
-                    .camToTagRvec = theta, 
-                    .camToTagTvec = pmat
-                }); 
+                estimations.emplace_back(m_cameraData, ids[i], theta, pmat); 
             }
             return std::move(estimations); 
         }; // Detect
@@ -85,13 +82,13 @@ class Estimator {
         }
 
     private:
-        Camera::CameraData m_cameraData; 
+        std::shared_ptr<Camera::CameraData> m_cameraData; 
         cv::aruco::ArucoDetector m_detector;
-        std::vector<cv::Point3f> m_objectPoints = {
-            {-4, 4, 0}, // every one is 33 mm
-            { 4, 4, 0},
-            { 4,-4, 0},
-            {-4,-4, 0}
+        std::array<cv::Point3f, 4> m_objectPoints = {
+            cv::Point3f {-4, 4, 0}, // every one is 33 mm
+            cv::Point3f { 4, 4, 0},
+            cv::Point3f { 4,-4, 0},
+            cv::Point3f {-4,-4, 0}
         };
 
 };

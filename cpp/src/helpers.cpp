@@ -33,7 +33,7 @@ typename Derived::Scalar median( const Eigen::DenseBase<Derived>& d ){
 // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2012/07/euler-angles1.pdf
 // or /docs/euler-angles
 // (x,y,z)
-cv::Mat rodRotMatToEuler(cv::Mat1d m) {
+cv::Mat rodRotMatToEuler(const cv::Mat1d& m) {
     double x = std::atan2(m[1][2], m[2][2]); 
     double c_2 = std::sqrt(std::pow(m[0][0],2) + std::pow(m[0][1],2));
     double y = std::atan2(-m[0][2], c_2); 
@@ -58,7 +58,7 @@ vector_d reject_outliers_2(const vector_d& linearArray, double m = 1.2) {
     vector_d result; 
     for (int i = 0; i < comparsionResult.size(); i++) {
         if (comparsionResult(i)) {
-            result.push_back(data(i)); 
+            result.emplace_back(data(i)); 
         }
     }
     return result; 
@@ -81,12 +81,12 @@ double average(const vector_d& data) {
     return average<double>(data);
 }
 
-std::vector<double> rotatePoint(double x, double y, double theta) {
+std::array<double, 2> rotatePoint(double x, double y, double theta) {
     theta = theta * DEG2RAD_RATIO;
     double r1 = std::sqrt(std::pow(x, 2) + std::pow(y, 2)); 
     double xp1 = r1*std::cos(std::atan(y/x) + theta); 
     double yp1 = r1*std::sin(std::atan(y/x) + theta); 
-    return std::vector<double> {xp1, yp1}; 
+    return std::array<double, 2> {xp1, yp1}; 
 }  
 
 cv::Mat rad2deg(cv::Mat src) {

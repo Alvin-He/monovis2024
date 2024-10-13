@@ -73,13 +73,18 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // bootstrap camera
     cv::VideoCapture cap{cameraID}; 
-    Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
+
+    // static to ensure cameraData always exists 
+    static Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
     cameraData.id = cameraID; 
     Camera::AdjustCameraDataToForFrameSize(cameraData, cap, K::PROC_FRAME_SIZE);
     Camera::FrameGenerator cameraReader {cap};
+    std::shared_ptr<Camera::CameraData> s_cameraData (&cameraData); 
+
+    fmt::println("camera {} initiated", cameraID);
 
     // construct estimator
-    Apriltag::Estimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
+    Apriltag::Estimator estimator {s_cameraData, APRILTAG_DETECTOR_PARAMS};
 
     // construct publisher
     Publishers::Internal::ApriltagPosePublisher ntApriltagPublisher {UUID}; 
@@ -114,11 +119,9 @@ cobalt::main co_main(int argc, char* argv[]) {
             });
         }
         co_await ntApriltagPublisher(std::move(poses), ts);
-        // co_await *lastPubTask;
-        // lastPubTask = std::make_unique<cobalt::promise<void>>(ntApriltagPublisher(std::move(poses), ts));
 
         #ifdef DEBUG
-        fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000.0);
+        // fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000.0);
         #endif
         #ifdef GUI
         cv::waitKey(1);

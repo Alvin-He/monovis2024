@@ -6,12 +6,8 @@
 
 #include <boost/asio/steady_timer.hpp>
 
-cobalt::main co_main(int argc, char* argv[]) {
 
-    co_await RedisDB::init();
-    
-    
-
+cobalt::detached scanTest() {
     const int scanDataSectionOffset = 3;
 
     std::string index = "0";
@@ -31,6 +27,21 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         fmt::println("index now at {}", index);
     } while (index != "0");
+}
+
+cobalt::detached pingLoop() {
+    for(;;) {
+        co_await RedisDB::ping(); 
+    }
+}
+
+cobalt::main co_main(int argc, char* argv[]) {
+
+    co_await RedisDB::init();
     
-    std::terminate();
+    pingLoop();
+
+    
+    
+    // std::terminate();
 }
