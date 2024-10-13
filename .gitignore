@@ -1,11 +1,13 @@
 /target
-/cpp/boost_1_85_0
+/cpp/boost_1_*
 /cpp/include/boost/** 
 /cpp/include/ntcore/**
 /opencv
 
 
+.cache
 .venv
+vtune
 build
 cross
 winBuild
