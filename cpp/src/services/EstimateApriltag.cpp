@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/program_options.hpp>
+#include <string>
 #include "camera/camera.cpp"
 #include "apriltag/apriltag.hpp"
 #include "network/publishers.cpp"
@@ -20,8 +21,8 @@ namespace PO = boost::program_options;
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
     std::string UUID;
-    std::string ntInternalIP; 
-    uint ntInternalPort; 
+    std::string redisIP; 
+    uint redisPort; 
     int cameraID; 
     std::string cameraCalibrationFilePath;
 
@@ -30,16 +31,16 @@ cobalt::main co_main(int argc, char* argv[]) {
         ("help", "show help message")
         ("uuid,u", 
             PO::value<std::string>(&UUID)
-            ->default_value("unnamed"), 
+            ->default_value("monovis-unnamed"), 
             "service uinque resource ID/name")
-        ("nt-internal", 
-            PO::value<std::string>(&ntInternalIP)
+        ("redis-ip", 
+            PO::value<std::string>(&redisIP)
             ->default_value("127.0.0.1"), 
-            "monovis internal networktables server ip address")
-        ("nt-internal-port", 
-            PO::value<uint>(&ntInternalPort)
-            ->default_value(5810), 
-            "monovis internal networktables server ip address")
+            "monovis internal redis server ip address")
+        ("redis-port", 
+            PO::value<uint>(&redisPort)
+            ->default_value(6379), 
+            "monovis internal redis server port")
         ("camera-id,I", 
             PO::value<int>(&cameraID)
             ->default_value(0),
@@ -68,7 +69,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
 
     // init RedisDB access
-    co_await RedisDB::init("127.0.0.1", "6379", UUID); 
+    co_await RedisDB::init(redisIP, std::to_string(redisPort), UUID); 
     co_await RedisDB::ping();
 
     // bootstrap camera
@@ -87,7 +88,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     Apriltag::Estimator estimator {s_cameraData, APRILTAG_DETECTOR_PARAMS};
 
     // construct publisher
-    Publishers::Internal::ApriltagPosePublisher ntApriltagPublisher {UUID}; 
+    Publishers::Internal::ApriltagPosePublisher apriltagPublisher {UUID}; 
 
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 
@@ -118,7 +119,7 @@ cobalt::main co_main(int argc, char* argv[]) {
                 .pose = Apriltag::World::RobotPoseFromEstimationResult(std::move(esti))
             });
         }
-        co_await ntApriltagPublisher(std::move(poses), ts);
+        co_await apriltagPublisher(std::move(poses), ts);
 
         #ifdef DEBUG
         // fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000.0);
