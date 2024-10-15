@@ -1,6 +1,14 @@
 {
     "configurations": [
         {
+            "type": "gdb",
+            "request": "launch",
+            "name": "launch world test",
+            "target": "${workspaceFolder}/build/artifacts/test_world_update",
+            "cwd": "${workspaceRoot}/config",
+            "valuesFormatting": "parseText"
+        },
+        {
             "name": "(gdb) Core dump",
             "type": "gdb",
             "request": "launch",

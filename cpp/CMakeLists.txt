@@ -117,3 +117,20 @@ target_link_libraries(redis_test
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
 )
+
+add_executable(test_world_update tests/apriltag.world.test.cpp)
+target_compile_options(test_world_update 
+	PUBLIC "-fcoroutines")
+target_link_libraries(test_world_update
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
+)
+

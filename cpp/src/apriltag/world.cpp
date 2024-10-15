@@ -20,10 +20,10 @@ static std::array<double, 2> CamRelativeToAbsoulote(double cx, double cy, double
     return std::array<double, 2> {tx - cords[0], ty - cords[1]}; 
 } // CamRelativeToAbsoulote
 
-static std::vector<Group> GroupCords(const CordinateList& cords, double limitRadiCM = 10) {    
+static std::vector<Group> GroupCords(const CordinateList& cords, double limitRadiCM = 20) {    
     std::vector<Group> groups; 
 
-    groups.emplace_back(cords[0], 1); // initialize with first cordinate 
+    // groups.emplace_back(cords[0], 1); // initialize with first cordinate 
     int totalNumOfCords = cords.size(); 
     for (int i = 0; i < totalNumOfCords; i++) {
         int currentNumOfGroups = groups.size();
@@ -47,7 +47,7 @@ static std::vector<Group> GroupCords(const CordinateList& cords, double limitRad
                 Group& g = groups[i]; 
                 g.cord.x = (g.cord.x + current.x)/2; // average the old cords with the new ones
                 g.cord.y = (g.cord.y + current.y)/2;
-                // g.cord.rot = (g.cord.rot + current.rot)/2; // yaw calculations are done seperately
+                g.cord.rot = (g.cord.rot + current.rot)/2; // average yaw
                 g.count += 1; // increment count
 
                 isNewGroup = false; //unmark makeNewGroup
@@ -128,7 +128,7 @@ class World {
         // find most accurate robot cord
         std::vector<Group> cordGroups = GroupCords(poses); 
         RobotPose bestPose = FindBestCord(cordGroups); 
-        bestPose.rot = FindBestYaw(poses); 
+        // bestPose.rot = FindBestYaw(poses); // doesn't really make sense to find best yaw seperately if we are throwing away most other non useful cords 
 
         m_lastRobotPose = bestPose;
     } // Update
