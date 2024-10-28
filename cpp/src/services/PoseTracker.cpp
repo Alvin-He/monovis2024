@@ -1,3 +1,4 @@
+#include "fmt/core.h"
 #include "global.cpp"
 #include "const.cpp"
 #include "helpers.cpp"
@@ -6,11 +7,14 @@
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/program_options.hpp>
+#include <memory>
 #include "apriltag/apriltag.hpp"
-#include "network/publishers.cpp"
+#include "network/RobotPose.cpp"
+#include "network/ApriltagPose.cpp"
 #include "network/network_time.cpp"
 
 #include "ntcore/networktables/NetworkTableInstance.h"
+#include "program_options/value_semantic.hpp"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -23,6 +27,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     uint ntRioPort;
     std::string redisIP; 
     uint redisPort; 
+    bool useNTForReceive = false;
 
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
@@ -34,11 +39,11 @@ cobalt::main co_main(int argc, char* argv[]) {
         ("nt-ip,n", 
             PO::value<std::string>(&ntRioIP)
             ->default_value("127.0.0.1"), 
-            "networktables server ip address")
+            "networktables server ip to publish to (and receive from if useNTForReceive)")
         ("nt-port", 
             PO::value<uint>(&ntRioPort)
             ->default_value(5810), 
-            "networktables server ip address")
+            "networktables server port to publish to (and receive from if useNTForReceive)")
         ("redis-ip,r", 
             PO::value<std::string>(&redisIP)
             ->default_value("127.0.0.1"), 
@@ -47,6 +52,11 @@ cobalt::main co_main(int argc, char* argv[]) {
             PO::value<uint>(&redisPort)
             ->default_value(6379), 
             "monovis redis server port")
+        ("useNTForReceive,T", 
+            PO::value<bool>(&useNTForReceive)
+            ->default_value(false),
+            "receive estimation info on NetworkTables instead of redis, only use in single camera set ups! default: false"
+        )
     ;
     PO::variables_map cliArgMap; 
     PO::store(PO::command_line_parser(argc, argv).options(cliOptions).run(), cliArgMap); 
@@ -58,16 +68,21 @@ cobalt::main co_main(int argc, char* argv[]) {
     } 
 
     // init redis 
-    co_await RedisDB::init(redisIP, std::to_string(redisPort), UUID); 
-    co_await RedisDB::ping();
+    if (!useNTForReceive) {
+        co_await RedisDB::init(redisIP, std::to_string(redisPort), UUID); 
+        co_await RedisDB::ping();
+    }
 
     // init network tables
-    nt::NetworkTableInstance ntRio = nt::NetworkTableInstance::Create();
+    nt::NetworkTableInstance ntRio = nt::NetworkTableInstance::GetDefault();
     ntRio.StartClient4("monovis-pose-" + UUID);
     ntRio.SetServer(ntRioIP.c_str(), ntRioPort); 
-    auto ntRioRoot = ntRio.GetTable("SmartDashboard");
     
-    Publishers::RobotPosePublisher roboPosPublisher {UUID, ntRioRoot}; 
+    std::unique_ptr<Network::RobotPose::Publisher> roboPosPublisher = std::make_unique<Network::RobotPose::NTPublisher>(UUID); 
+
+    std::unique_ptr<Network::ApriltagPose::Receiver> estiInfoReceiver; 
+    if (useNTForReceive) estiInfoReceiver = std::make_unique<Network::ApriltagPose::NTReceiver>();
+    else estiInfoReceiver = std::make_unique<Network::ApriltagPose::RedisReceiver>(UUID);
 
     Apriltag::World::World robotTracking; 
        
@@ -84,17 +99,12 @@ cobalt::main co_main(int argc, char* argv[]) {
     {   
         timer.expires_from_now(K::POSE_LOOP_UPDATE_INTERVAL); 
 
-        auto [timestamps, validPackets] = co_await Publishers::Internal::ApriltagPosePublisher::receive();
-        std::vector<Apriltag::World::RobotPose> poses;
-        for (auto& packet : validPackets) {
-            poses.push_back(std::move(packet.pose));
-        }
+        auto [timestamps, validPackets] = co_await estiInfoReceiver->receive();
 
         auto avgTs = h::average(timestamps); 
-
-        robotTracking.Update(poses);
+        robotTracking.Update(validPackets);
         auto robotGlobalPose = robotTracking.GetRobotPose();
-        roboPosPublisher(robotGlobalPose, avgTs); 
+        roboPosPublisher->publish(robotGlobalPose, avgTs); 
 
         #ifdef DEBUG 
         fmt::println("UPDATE: X: {}, Y: {}, R: {}", robotGlobalPose.x, robotGlobalPose.y, robotGlobalPose.rot);

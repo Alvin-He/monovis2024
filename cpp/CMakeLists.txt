@@ -46,6 +46,8 @@ add_library(boost_thread STATIC IMPORTED)
 set_property(TARGET boost_thread PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_thread.a)
 add_library(boost_chrono STATIC IMPORTED)
 set_property(TARGET boost_chrono PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_chrono.a)
+add_library(boost_filesystem STATIC IMPORTED)
+set_property(TARGET boost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_filesystem.a)
 
 find_package(OpenSSL REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
@@ -134,3 +136,19 @@ target_link_libraries(test_world_update
 	PRIVATE ${OPENSSL_LIBRARIES}
 )
 
+add_executable(calib src/calibrate/calibrate.cpp)
+target_compile_options(calib 
+	PUBLIC "-fcoroutines")
+target_link_libraries(calib
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE boost_filesystem
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
+)

@@ -1,4 +1,5 @@
 #pragma once
+#include "cobalt/op.hpp"
 #include <vector>
 
 // Types and container definations used in world.cpp
@@ -24,18 +25,27 @@ namespace Apriltag::World
         AllTagsInfo tags;
     }; // Struct WorldInfo
 
-    struct RobotPose {
-        double x; 
-        double y; 
-        double rot;
+    struct Pos2D {
+        double x = 0; 
+        double y = 0; 
+        double rot = 0;
     }; 
 
+    struct Pos2DwTag { 
+        double x = 0; 
+        double y = 0; 
+        double rot = 0;
+        int id = 0; 
+
+        operator Pos2D() const {return Pos2D(x, y, rot);}
+    };
+
     struct Group {
-        RobotPose cord; 
+        Pos2D cord; 
         int count; // used to determine the best cord
     }; 
 
     // Typedefs
-    typedef std::vector<RobotPose> CordinateList; 
+    typedef std::vector<Pos2DwTag> CordinateList; 
 
 } // namespace Apriltag::World

@@ -1,5 +1,6 @@
 #pragma once
 // absoulote position tracking
+#include "fmt/core.h"
 #include "helpers.cpp"
 #include "const.cpp"
 #include "global.cpp"
@@ -27,7 +28,7 @@ static std::vector<Group> GroupCords(const CordinateList& cords, double limitRad
     int totalNumOfCords = cords.size(); 
     for (int i = 0; i < totalNumOfCords; i++) {
         int currentNumOfGroups = groups.size();
-        RobotPose current = cords[i]; 
+        const Pos2DwTag& current = cords[i]; 
 
         // calculate distance from current cord to all know groups 
         std::vector<double> distances;
@@ -63,7 +64,7 @@ static std::vector<Group> GroupCords(const CordinateList& cords, double limitRad
     return std::move(groups); 
 }
 
-static RobotPose FindBestCord(const std::vector<Group>& groups) {
+static Pos2D FindBestCord(const std::vector<Group>& groups) {
     int bestResIndex = 0; 
     int lastBestScore = 0;
     int numOfGroups = groups.size();  
@@ -86,7 +87,7 @@ static double FindBestYaw(const CordinateList& cords) {
     return h::average(h::reject_outliers_2(yaws));
 }
 
-static RobotPose RobotPoseFromEstimationResult(const Apriltag::EstimationResult& res) {
+static Pos2DwTag RobotPoseFromEstimationResult(const Apriltag::EstimationResult& res) {
     //            fmt::println("tvec: {}", res.camToTagTvec); 
     //            fmt::println("rvev: {}", res.camToTagRvec); 
 
@@ -104,7 +105,7 @@ static RobotPose RobotPoseFromEstimationResult(const Apriltag::EstimationResult&
 
     std::array<double, 2> robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
-    return RobotPose {.x = robotCords[0], .y = robotCords[1], .rot = yaw};
+    return Pos2DwTag {.x = robotCords[0], .y = robotCords[1], .rot = yaw, .id = res.id};
 }
 // Solvers
 
@@ -127,18 +128,18 @@ class World {
 
         // find most accurate robot cord
         std::vector<Group> cordGroups = GroupCords(poses); 
-        RobotPose bestPose = FindBestCord(cordGroups); 
+        Pos2D bestPose = FindBestCord(cordGroups); 
         // bestPose.rot = FindBestYaw(poses); // doesn't really make sense to find best yaw seperately if we are throwing away most other non useful cords 
 
         m_lastRobotPose = bestPose;
     } // Update
 
-    RobotPose GetRobotPose() {
+    Pos2D GetRobotPose() {
         return m_lastRobotPose; 
     }
     
     private:
-        RobotPose m_lastRobotPose = {.x = 0, .y=0, .rot = 0}; 
+        Pos2D m_lastRobotPose = {.x = 0, .y=0, .rot = 0}; 
 
 }; // class World
 

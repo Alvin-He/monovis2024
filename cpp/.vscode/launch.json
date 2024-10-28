@@ -3,6 +3,14 @@
         {
             "type": "gdb",
             "request": "launch",
+            "name": "launch calibrate",
+            "target": "${workspaceFolder}/build/artifacts/calib",
+            "cwd": "${workspaceRoot}/",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
             "name": "launch world test",
             "target": "${workspaceFolder}/build/artifacts/test_world_update",
             "cwd": "${workspaceRoot}/config",

@@ -19,7 +19,7 @@ cobalt::main co_main(int argc, char **argv) {
         {230, -160, 324}
     };
 
-    auto isInExpected = [&] (Apriltag::World::RobotPose pose) {
+    auto isInExpected = [&] (Apriltag::World::Pos2D pose) {
         return
             197 < pose.x && pose.x < 210 &&
             326 < pose.y && pose.y < 340 &&
