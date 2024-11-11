@@ -1,7 +1,9 @@
 
+#include "fmt/core.h"
 #include "global.cpp"
 #include "const.cpp"
 #include "helpers.cpp"
+#include <cmath>
 #include <csignal>
 #include <boost/cobalt.hpp>
 #include <boost/asio.hpp>
@@ -10,6 +12,13 @@
 #include <memory>
 #include <networktables/NetworkTableInstance.h>
 #include <ntcore_cpp.h>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/objdetect/charuco_detector.hpp>
+#include <opencv2/videoio.hpp>
 #include <string>
 #include "camera/camera.cpp"
 #include "apriltag/apriltag.hpp"
@@ -73,8 +82,8 @@ cobalt::main co_main(int argc, char* argv[]) {
     APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
     APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
     // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeStep = 5;
-    APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_APRILTAG;
-    // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
+    APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
+    APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
 
     // init RedisDB access if enabled
     if (!useNT) {
@@ -97,7 +106,9 @@ cobalt::main co_main(int argc, char* argv[]) {
     // static to ensure cameraData always exists 
     static Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
     cameraData.id = cameraID; 
-    Camera::AdjustCameraDataToForFrameSize(cameraData, cap, K::PROC_FRAME_SIZE);
+
+    Camera::AdjustCameraDataAndCapture(cameraData, cap, K::PROC_FRAME_SIZE);     
+
     Camera::FrameGenerator cameraReader {cap};
     std::shared_ptr<Camera::CameraData> s_cameraData (&cameraData); 
 
@@ -131,6 +142,11 @@ cobalt::main co_main(int argc, char* argv[]) {
         frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
         // fmt::println("IO & PREPROC Time: {}ms", timer.elapsed().wall/1000000);
 
+
+        // cv::Mat undistored;
+        // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
+        // cv::imshow("undistored", undistored); 
+
         Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
 
         std::vector<Apriltag::World::Pos2DwTag> poses;
@@ -138,6 +154,12 @@ cobalt::main co_main(int argc, char* argv[]) {
             poses.push_back(
                 Apriltag::World::RobotPoseFromEstimationResult(std::move(esti))
             );
+            #ifdef DEBUG 
+            auto lastPose = poses.back();
+            fmt::println("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
+                std::sqrt(lastPose.x * lastPose.x + lastPose.y * lastPose.y), // pathegram formula distance calc
+                lastPose.x, lastPose.y, lastPose.rot);
+            #endif
         }
         co_await apriltagPublisher->publish(std::move(poses), ts);
 

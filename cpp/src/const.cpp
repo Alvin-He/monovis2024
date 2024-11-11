@@ -30,7 +30,8 @@ Apriltag::World::WorldInfo FIELD {
         Apriltag::World::TagLocation {.id = 4, .x = 0, .y = 211, .z = 111.5, .yaw = 0}, // window wall fixed tags
         Apriltag::World::TagLocation {.id = 5, .x = 0, .y = 317.5, .z = 88, .yaw = 0}, // window wall fixed tags
         Apriltag::World::TagLocation {.id = 6, .x = 185, .y = 0, .z = 115, .yaw = 90}, // door side wall fixed tags 
-        Apriltag::World::TagLocation {.id = 7, .x = 0, .y = 554.7868, .z = 145.1102, .yaw = 0}, 
+        Apriltag::World::TagLocation {.id = 7, .x = 0, .y = 0, .z = 0, .yaw = 0}, 
+        // Apriltag::World::TagLocation {.id = 7, .x = 0, .y = 554.7868, .z = 145.1102, .yaw = 0}, 
         Apriltag::World::TagLocation {.id = 8, .x = 0, .y = 498.2818, .z = 145.1102, .yaw = 0}, 
         Apriltag::World::TagLocation {.id = 9, .x = 35.6108, .y = 88.3666, .z = 135.5852, .yaw = 60},
         Apriltag::World::TagLocation {.id = 10, .x = 146.1516, .y = 24.5872, .z = 135.5852, .yaw = 60},

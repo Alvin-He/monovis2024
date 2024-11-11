@@ -136,7 +136,9 @@ target_link_libraries(test_world_update
 	PRIVATE ${OPENSSL_LIBRARIES}
 )
 
-add_executable(calib src/calibrate/calibrate.cpp)
+file(GLOB calib_srcs interactive_calib/*.cpp)
+add_executable(calib ${calib_srcs})
+# add_executable(calib src/calibrate/calibrate_camera_charuco.cpp)
 target_compile_options(calib 
 	PUBLIC "-fcoroutines")
 target_link_libraries(calib

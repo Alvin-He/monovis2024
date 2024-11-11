@@ -85,7 +85,7 @@ class Estimator {
         std::shared_ptr<Camera::CameraData> m_cameraData; 
         cv::aruco::ArucoDetector m_detector;
         std::array<cv::Point3f, 4> m_objectPoints = {
-            cv::Point3f {-4, 4, 0}, // every one is 33 mm
+            cv::Point3f {-4, 4, 0},
             cv::Point3f { 4, 4, 0},
             cv::Point3f { 4,-4, 0},
             cv::Point3f {-4,-4, 0}

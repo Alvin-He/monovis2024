@@ -1,5 +1,7 @@
 #pragma once 
 
+#include "common.cpp"
+#include <opencv2/core/types.hpp>
 #include <opencv4/opencv2/opencv.hpp>
 
 namespace Camera
@@ -21,6 +23,7 @@ namespace Camera
         cv::Matx<double, 1, 5> distCoeffs = 
             {-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398};
             // {{-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398}};
+        cv::Size2d calibratedAspectRatio = cv::Size2d(1280, 720);
     };
 
     // deseralize camera calibration data from xml file
@@ -29,26 +32,22 @@ namespace Camera
         cv::Mat matrix; 
         cameraCalibData["cameraMatrix"] >> matrix;  
         cv::Mat distCoeffs;
-        cameraCalibData["dist_coeffs"] >> distCoeffs; 
+        cameraCalibData["dist_coeffs"] >> distCoeffs;
+        cv::Size2d size; 
+        cameraCalibData["cameraResolution"] >> size; 
         cameraCalibData.release(); 
         CameraData cameraMainData = {
             .matrix = std::move(matrix), 
-            .distCoeffs = std::move(distCoeffs)
+            .distCoeffs = std::move(distCoeffs),
+            .calibratedAspectRatio = std::move(size)
         }; 
         return std::move(cameraMainData); 
     }
-
-    // adjust camera matrix for resized smaller image
-    void AdjustCameraDataToForFrameSize(CameraData& cameraData, const cv::Size2d& originalFrameSize, const cv::Size2d& targetFrameSize) {
-        cameraData.matrix(0, 0) *= (targetFrameSize.width / originalFrameSize.width); // fx
-        cameraData.matrix(0, 2) *= (targetFrameSize.width / originalFrameSize.width); // cx
-        cameraData.matrix(1, 1) *= (targetFrameSize.height / originalFrameSize.height); // fy
-        cameraData.matrix(1, 2) *= (targetFrameSize.height / originalFrameSize.height); // cy
-    }
-
-    // AdjustCameraDataToForFrameSize but directly getting the originalFrameSize directly from a VideoCapture
-    void AdjustCameraDataToForFrameSize(CameraData& cameraData, const cv::VideoCapture& cap, const cv::Size2d& targetFrameSize) {
-        cv::Size2d originalFrameSize(cap.get(cv::CAP_PROP_FRAME_WIDTH), cap.get(cv::CAP_PROP_FRAME_HEIGHT)); 
-        AdjustCameraDataToForFrameSize(cameraData, originalFrameSize, targetFrameSize); 
+    // Modifiys the capture aspect ratio to the calibrated aspect ratio and rescales the camera matrix for a desired frame size
+    void AdjustCameraDataAndCapture(CameraData& cameraData, cv::VideoCapture& cap, const cv::Size2d& targetFrameSize) {
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData.calibratedAspectRatio.width);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData.calibratedAspectRatio.height);
+       
+        cameraData.matrix = cv::getOptimalNewCameraMatrix(cameraData.matrix, cameraData.distCoeffs, cameraData.calibratedAspectRatio, 1, targetFrameSize);    
     }
 } // namespace Camera
