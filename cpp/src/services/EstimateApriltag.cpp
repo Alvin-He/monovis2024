@@ -1,8 +1,8 @@
-
 #include "fmt/core.h"
 #include "global.cpp"
 #include "const.cpp"
 #include "helpers.cpp"
+#include <chrono>
 #include <cmath>
 #include <csignal>
 #include <boost/cobalt.hpp>
@@ -26,6 +26,7 @@
 #include "network/network_time.cpp"
 #include "network/redis.cpp"
 #include "program_options/value_semantic.hpp"
+#include "fmt/include/fmt/chrono.h"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -79,11 +80,16 @@ cobalt::main co_main(int argc, char* argv[]) {
     // global apriltagDetector parameters
     cv::aruco::DetectorParameters APRILTAG_DETECTOR_PARAMS;
     // max smaller than 5 seems to work pretty well
-    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
-    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
-    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeStep = 5;
-    APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
-    APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
+    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
+    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
+    APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
+    APRILTAG_DETECTOR_PARAMS.cornerRefinementWinSize = 20;
+    // APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.7;
+    APRILTAG_DETECTOR_PARAMS.minCornerDistanceRate *= 0.01;
+    APRILTAG_DETECTOR_PARAMS.minMarkerDistanceRate *= 0.01;
+    APRILTAG_DETECTOR_PARAMS.minMarkerPerimeterRate *= 0.01;
+
+    // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
 
     // init RedisDB access if enabled
     if (!useNT) {
@@ -110,6 +116,10 @@ cobalt::main co_main(int argc, char* argv[]) {
     Camera::AdjustCameraDataAndCapture(cameraData, cap, K::PROC_FRAME_SIZE);     
 
     Camera::FrameGenerator cameraReader {cap};
+    // for (auto& buf : frameBufs) {
+    //     cap.read(buf);
+    // }
+    // cameraRead(cap, readReq, readFinished).detach(); 
     std::shared_ptr<Camera::CameraData> s_cameraData (&cameraData); 
 
     fmt::println("camera {} initiated", cameraID);
@@ -132,22 +142,28 @@ cobalt::main co_main(int argc, char* argv[]) {
     fmt::println("starting main program loop");
     while (!f_exit)
     {   
+        // fmt::println("LS");
         #ifdef DEBUG
-        boost::timer::cpu_timer timer; 
-        timer.start(); 
+        auto start = std::chrono::high_resolution_clock::now();
         #endif 
 
         cv::Mat frame = co_await cameraReader.PromiseRead();
-        auto ts = NetworkTime::Now();
-        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
-        // fmt::println("IO & PREPROC Time: {}ms", timer.elapsed().wall/1000000);
+        // cv::Mat frame = co_await getFrame();
+        fmt::println("");
+        // fmt::print("\tREAD: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
+        auto ts = NetworkTime::Now();
+        // frame = Camera::Resize(frame, K::PROC_FRAME_SIZE);
+        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
+        // fmt::print("\tRESIZE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         // cv::Mat undistored;
         // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
         // cv::imshow("undistored", undistored); 
 
         Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
+        // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
+        // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         std::vector<Apriltag::World::Pos2DwTag> poses;
         for(auto& esti : res) {
@@ -156,15 +172,18 @@ cobalt::main co_main(int argc, char* argv[]) {
             );
             #ifdef DEBUG 
             auto lastPose = poses.back();
-            fmt::println("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
-                std::sqrt(lastPose.x * lastPose.x + lastPose.y * lastPose.y), // pathegram formula distance calc
+            fmt::print("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
+                std::sqrt(std::pow(lastPose.x, 2) + std::pow(lastPose.y,2)), // pathegram formula distance calc
                 lastPose.x, lastPose.y, lastPose.rot);
             #endif
         }
+        // fmt::print("\tESTIMATE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
+
         co_await apriltagPublisher->publish(std::move(poses), ts);
+        // fmt::print("\tPUBLISH: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         #ifdef DEBUG
-        fmt::println("Cycle Time: {}ms", timer.elapsed().wall/1000000.0);
+        fmt::print("\tTotal Time: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         #endif
         #ifdef GUI
         cv::waitKey(1);

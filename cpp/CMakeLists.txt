@@ -51,6 +51,7 @@ set_property(TARGET boost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_
 
 find_package(OpenSSL REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
+# find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED 
 	# PATHS ${CMAKE_SOURCE_DIR}/../bin/opencv/lib/cmake/opencv4/
 	)
@@ -86,6 +87,7 @@ target_link_libraries(apriltag_service
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
+	# PRIVATE ceres
 )
 
 add_executable(pose_service src/services/PoseTracker.cpp)

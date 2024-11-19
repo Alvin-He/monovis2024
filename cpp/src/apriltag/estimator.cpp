@@ -6,6 +6,8 @@
 #include "helpers.cpp"
 #include "camera/cameraData.cpp"
 #include <fmt/include/fmt/core.h> // why tf is fmt not defined here even when damn common.cpp exist
+#include <vector>
+
 // and it was fine yesterday
 namespace Apriltag {
 
@@ -34,6 +36,8 @@ class Estimator {
             // detecting the tags in image
             std::vector<std::vector<cv::Point2f>> corners;
             std::vector<int> ids; 
+            // cv::Mat gray; 
+            // cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
             this->m_detector.detectMarkers(image, corners, ids); 
             
             #if defined(DEBUG) && defined(GUI)
@@ -54,7 +58,9 @@ class Estimator {
                     m_cameraData->matrix, 
                     m_cameraData->distCoeffs,
                     rvec, 
-                    tvec); 
+                    tvec, 
+                    false, 
+                    cv::SOLVEPNP_SQPNP); 
                 // if (!ret) continue; // solve pnp "should" always return somehting
 
                 // math
@@ -71,6 +77,7 @@ class Estimator {
 
                 estimations.emplace_back(m_cameraData, ids[i], theta, pmat); 
             }
+            estimations.shrink_to_fit();
             return std::move(estimations); 
         }; // Detect
 
