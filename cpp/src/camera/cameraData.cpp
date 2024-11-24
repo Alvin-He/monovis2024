@@ -57,7 +57,6 @@ namespace Camera
         cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData.calibratedAspectRatio.width);
         cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData.calibratedAspectRatio.height);
        
-       AdjustCameraDataForNewImageSize(cameraData, cameraData.calibratedAspectRatio, targetFrameSize);
         // cameraData.matrix = cv::getOptimalNewCameraMatrix(cameraData.matrix, cameraData.distCoeffs, cameraData.calibratedAspectRatio, -1, targetFrameSize);    
     }
 } // namespace Camera

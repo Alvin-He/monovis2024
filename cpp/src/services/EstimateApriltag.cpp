@@ -80,14 +80,17 @@ cobalt::main co_main(int argc, char* argv[]) {
     // global apriltagDetector parameters
     cv::aruco::DetectorParameters APRILTAG_DETECTOR_PARAMS;
     // max smaller than 5 seems to work pretty well
-    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
-    // APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
+    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
+    APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
     APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
-    APRILTAG_DETECTOR_PARAMS.cornerRefinementWinSize = 20;
+    APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.5;
+    APRILTAG_DETECTOR_PARAMS.cornerRefinementWinSize = 10;
     // APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.7;
-    APRILTAG_DETECTOR_PARAMS.minCornerDistanceRate *= 0.01;
-    APRILTAG_DETECTOR_PARAMS.minMarkerDistanceRate *= 0.01;
-    APRILTAG_DETECTOR_PARAMS.minMarkerPerimeterRate *= 0.01;
+    APRILTAG_DETECTOR_PARAMS.minCornerDistanceRate *= 0.05;
+    APRILTAG_DETECTOR_PARAMS.minMarkerDistanceRate *= 0.05; 
+    APRILTAG_DETECTOR_PARAMS.minMarkerPerimeterRate *= 0.05;
+    // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
+    // APRILTAG_DETECTOR_PARAMS.minSideLengthCanonicalImg = 13;    
 
     // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
 
@@ -114,6 +117,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     cameraData.id = cameraID; 
 
     Camera::AdjustCameraDataAndCapture(cameraData, cap, K::PROC_FRAME_SIZE);     
+    // Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData.calibratedAspectRatio, targetFrameSize);
 
     Camera::FrameGenerator cameraReader {cap};
     // for (auto& buf : frameBufs) {
@@ -154,7 +158,7 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         auto ts = NetworkTime::Now();
         // frame = Camera::Resize(frame, K::PROC_FRAME_SIZE);
-        frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
+        // frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
         // fmt::print("\tRESIZE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         // cv::Mat undistored;
