@@ -153,7 +153,6 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         cv::Mat frame = co_await cameraReader.PromiseRead();
         // cv::Mat frame = co_await getFrame();
-        fmt::println("");
         // fmt::print("\tREAD: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         auto ts = NetworkTime::Now();
@@ -165,7 +164,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
         // cv::imshow("undistored", undistored); 
 
-        Apriltag::AllEstimationResults res = co_await estimator.PromiseDetect(frame); 
+        Apriltag::AllEstimationResults res =  estimator.DetectCUDA(frame); //co_await estimator.PromiseDetect(frame); 
         // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
         // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
@@ -176,7 +175,7 @@ cobalt::main co_main(int argc, char* argv[]) {
             );
             #ifdef DEBUG 
             auto lastPose = poses.back();
-            fmt::print("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
+            fmt::print("CUDA: Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
                 std::sqrt(std::pow(lastPose.x, 2) + std::pow(lastPose.y,2)), // pathegram formula distance calc
                 lastPose.x, lastPose.y, lastPose.rot);
             #endif
@@ -188,6 +187,8 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         #ifdef DEBUG
         fmt::print("\tTotal Time: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
+        fmt::println("");
+        
         #endif
         #ifdef GUI
         cv::waitKey(1);

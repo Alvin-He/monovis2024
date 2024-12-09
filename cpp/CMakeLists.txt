@@ -12,7 +12,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 # set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts")
 
-set(CUDAToolkit_ROOT /usr/local/cuda)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 set(NTCORE_INSTALL_PATH "${CMAKE_SYSROOT}/usr/local/ntcore")
@@ -21,6 +20,8 @@ set(wpiutil_DIR ${NTCORE_INSTALL_PATH}/share/wpiutil)
 set(wpinet_DIR ${NTCORE_INSTALL_PATH}/share/wpinet)
 include_directories(SYSTEM ${NTCORE_INSTALL_PATH}/include)
 
+set(CUDAToolkit_ROOT /usr/local/cuda)
+include_directories(SYSTEM ${CUDAToolkit_ROOT}/include)
 
 include_directories(
 	"include/"
@@ -49,6 +50,14 @@ set_property(TARGET boost_chrono PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS
 add_library(boost_filesystem STATIC IMPORTED)
 set_property(TARGET boost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_filesystem.a)
 
+add_library(cuAprilTags STATIC IMPORTED)
+if(CMAKE_CXX_COMPILER_TARGET MATCHES "aarch64")
+	set_property(TARGET cuAprilTags PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/cuAprilTags/libcuapriltags_aarch64.a")
+else()
+	set_property(TARGET cuAprilTags PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/cuAprilTags/libcuapriltags_x86_64.a")
+endif()
+
+find_package(CUDAToolkit)
 find_package(OpenSSL REQUIRED)
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 # find_package(Ceres REQUIRED)
@@ -87,6 +96,9 @@ target_link_libraries(apriltag_service
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
+	PRIVATE cuAprilTags
+	PRIVATE CUDA::cudart
+	PRIVATE CUDA::cuda_driver
 	# PRIVATE ceres
 )
 
