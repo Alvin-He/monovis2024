@@ -180,7 +180,7 @@ class Estimator {
                 
                 // pamt and theta is already flat for index access
 
-                estimations.emplace_back(m_cameraData, ids[i], theta, pmat); 
+                estimations.emplace_back(m_cameraData, m_cuResultBuf[i].id, theta, pmat); 
             }
             estimations.shrink_to_fit();
             return std::move(estimations); 
