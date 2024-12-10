@@ -51,7 +51,7 @@ add_library(boost_filesystem STATIC IMPORTED)
 set_property(TARGET boost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_filesystem.a)
 
 add_library(cuAprilTags STATIC IMPORTED)
-if(CMAKE_CXX_COMPILER_TARGET MATCHES "aarch64")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 	set_property(TARGET cuAprilTags PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/cuAprilTags/libcuapriltags_aarch64.a")
 else()
 	set_property(TARGET cuAprilTags PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/cuAprilTags/libcuapriltags_x86_64.a")
