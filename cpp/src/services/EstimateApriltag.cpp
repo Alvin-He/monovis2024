@@ -116,8 +116,8 @@ cobalt::main co_main(int argc, char* argv[]) {
     static Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
     cameraData.id = cameraID; 
 
-    Camera::AdjustCameraDataAndCapture(cameraData, cap, K::PROC_FRAME_SIZE);     
-    // Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData.calibratedAspectRatio, targetFrameSize);
+    Camera::AdjustCameraDataAndCapture(cameraData, cap);     
+    Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData.calibratedAspectRatio, K::PROC_FRAME_SIZE);
 
     Camera::FrameGenerator cameraReader {cap};
     // for (auto& buf : frameBufs) {
@@ -156,7 +156,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         // fmt::print("\tREAD: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
         auto ts = NetworkTime::Now();
-        // frame = Camera::Resize(frame, K::PROC_FRAME_SIZE);
+        frame = Camera::Resize(frame, K::PROC_FRAME_SIZE);
         // frame = co_await Camera::PromiseResize(frame, K::PROC_FRAME_SIZE);
         // fmt::print("\tRESIZE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
@@ -164,7 +164,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
         // cv::imshow("undistored", undistored); 
 
-        Apriltag::AllEstimationResults res =  estimator.DetectCUDA(frame); //co_await estimator.PromiseDetect(frame); 
+        Apriltag::AllEstimationResults res =  estimator.Detect(frame); //co_await estimator.PromiseDetect(frame); 
         // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
         // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 

@@ -21,7 +21,6 @@ set(wpinet_DIR ${NTCORE_INSTALL_PATH}/share/wpinet)
 include_directories(SYSTEM ${NTCORE_INSTALL_PATH}/include)
 
 set(CUDAToolkit_ROOT /usr/local/cuda)
-include_directories(SYSTEM ${CUDAToolkit_ROOT}/include)
 
 include_directories(
 	"include/"
@@ -96,11 +95,15 @@ target_link_libraries(apriltag_service
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
-	PRIVATE cuAprilTags
-	PRIVATE CUDA::cudart
-	PRIVATE CUDA::cuda_driver
 	# PRIVATE ceres
 )
+
+if(CUDAToolkit_FOUND) 
+	target_link_libraries(apriltag_service 	
+		PRIVATE cuAprilTags
+		PRIVATE CUDA::cudart
+		PRIVATE CUDA::cuda_driver)
+endif()
 
 add_executable(pose_service src/services/PoseTracker.cpp)
 target_compile_options(pose_service 

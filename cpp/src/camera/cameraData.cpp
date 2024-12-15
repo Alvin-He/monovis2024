@@ -53,7 +53,7 @@ namespace Camera
     }
 
     // Modifiys the capture aspect ratio to the calibrated aspect ratio and rescales the camera matrix for a desired frame size
-    void AdjustCameraDataAndCapture(CameraData& cameraData, cv::VideoCapture& cap, const cv::Size2d& targetFrameSize) {
+    void AdjustCameraDataAndCapture(CameraData& cameraData, cv::VideoCapture& cap) {
         cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData.calibratedAspectRatio.width);
         cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData.calibratedAspectRatio.height);
        
