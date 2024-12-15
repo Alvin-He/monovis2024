@@ -26,3 +26,8 @@ for boost 1.85 `cancel_on_conn_lost()` must be added to redis/detail/connection_
 ```
 
 untill this issue gets resolved https://github.com/boostorg/redis/issues/211
+
+
+
+for solvePnp, cv::SOLVEPNP_SQPNP is significantly faster 
+so most of the performance pain points is on detection actually 

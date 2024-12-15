@@ -121,10 +121,10 @@ target_link_libraries(pose_service
 	PRIVATE ${OPENSSL_LIBRARIES}
 )
 
-add_executable(redis_test src/redis.test.cpp)
-target_compile_options(redis_test 
+add_executable(foo src/foo.cpp)
+target_compile_options(foo 
 	PUBLIC "-fcoroutines")
-target_link_libraries(redis_test
+target_link_libraries(foo
 	PRIVATE boost_cobalt
 	PRIVATE boost_program_options
 	PRIVATE boost_thread
