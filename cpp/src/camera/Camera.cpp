@@ -41,26 +41,6 @@ namespace Camera
         cobalt::promise<cv::Mat> PromiseRead() {co_return std::move(Read());} 
         cobalt::task<cv::Mat> TaskRead() {co_return std::move(Read());}
 
-        void ReadLoop(std::vector<cv::Mat>& frameBufs, std::vector<int64_t>& tsBufs, std::atomic<int>& usuable) {
-            boost::thread thr ([&] {
-                while(!f_exit) {
-                    auto frame = Read(); 
-                    auto ts = NetworkTime::Now();
-                    frame = Camera::Resize(frame, K::PROC_FRAME_SIZE);
-                    if (usuable == 1) {
-                        frameBufs[0] = std::move(frame); 
-                        tsBufs[0] = std::move(ts);
-                        usuable = 0;
-                    } else {
-                        frameBufs[1] = std::move(frame);
-                        tsBufs[1] = std::move(ts); 
-                        usuable = 1;
-                    }
-                }
-            });
-            thr.detach(); 
-        }
-
         private:
             cv::VideoCapture m_cap; 
     }; // Camera::FrameGenerator

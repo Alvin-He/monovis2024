@@ -1,10 +1,9 @@
 #pragma once
-#include "cobalt/op.hpp"
 #include <vector>
 
 // Types and container definations used in world.cpp
 
-namespace Apriltag::World
+namespace WorldPose
 {        
     // Storage container for individual Tag info
     struct TagLocation {
@@ -44,8 +43,5 @@ namespace Apriltag::World
         Pos2D cord; 
         int count; // used to determine the best cord
     }; 
-
-    // Typedefs
-    typedef std::vector<Pos2DwTag> CordinateList; 
 
 } // namespace Apriltag::World

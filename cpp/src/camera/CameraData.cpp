@@ -1,15 +1,19 @@
 #pragma once 
 
 #include "common.cpp"
+#include <map>
+#include <memory>
 #include <opencv2/core/types.hpp>
 #include <opencv4/opencv2/opencv.hpp>
+#include <string>
+#include <string_view>
 
 namespace Camera
 {
     struct CameraData {
         int id = 0; 
         // int camToRobotPos{4} = {800,250,300, 0}, # anchored at bottom right of robot
-        double camToRobotPos[4] = {0,0,0, 0};
+        double camToRobotPos[4] = {0,0,0, 270};
         // std::vector<std::vector<double>> matrix =
         //   {{710.8459662, 0, 584.09769116},
         //   {0.,710.64515618, 485.94212983},
@@ -25,6 +29,9 @@ namespace Camera
             // {{-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398}};
         cv::Size2d calibratedAspectRatio = cv::Size2d(1280, 720);
     };
+
+    // uuid, asosociated camera data
+    static std::map<std::string, std::shared_ptr<CameraData>> GlobalCameraRegistra;
 
     // deseralize camera calibration data from xml file
     CameraData LoadCalibDataFromXML(const std::string& filePath) {

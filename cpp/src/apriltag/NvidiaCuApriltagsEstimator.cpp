@@ -1,10 +1,10 @@
 #pragma once
 
+
 #ifdef HAS_CUDA
 
-#include "global.cpp"
 #include "common.cpp"
-#include "estimator.cpp"
+#include "Estimator.ipp"
 
 #include <opencv2/core/cuda.hpp>
 #include "helpers.cpp"
@@ -14,7 +14,7 @@
 // and it was fine yesterday
 namespace Apriltag {
 
-class CUDAEstimator {
+class CUDAEstimator : Estimator {
     public:
         CUDAEstimator(std::shared_ptr<Camera::CameraData> cameraData, cv::aruco::DetectorParameters detectorParams): 
             m_cameraData(cameraData), 
@@ -35,8 +35,8 @@ class CUDAEstimator {
             } 
         }; // Estimator
 
-        AllEstimationResults DetectCUDA(cv::Mat image) {
-            AllEstimationResults estimations; 
+        std::vector<EstimationResult> DetectCUDA(cv::Mat image) {
+            std::vector<EstimationResult> estimations; 
 
             // cudaStreamAttachMemAsync(m_mainStream, image.data, image.size().area()*3*sizeof(char));
             // cudaStreamSynchronize(m_mainStream);

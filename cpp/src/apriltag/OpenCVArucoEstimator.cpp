@@ -1,35 +1,14 @@
 #pragma once
-#include "global.cpp"
-#include "common.cpp"
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <iostream>
-#include <iterator>
-#include <opencv2/core/hal/interface.h>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
-#include <opencv4/opencv2/aruco.hpp>
-#include <opencv4/opencv2/opencv.hpp>
+#include "Estimator.ipp"
 #include "helpers.cpp"
-#include "camera/cameraData.cpp"
-#include <fmt/include/fmt/core.h> // why tf is fmt not defined here even when damn common.cpp exist
+#include <vector>
 
 // and it was fine yesterday
 namespace Apriltag {
 
-struct EstimationResult {
-    std::shared_ptr<Camera::CameraData> cameraInfo; 
-    int id; 
-    cv::Mat1d camToTagRvec; 
-    cv::Mat1d camToTagTvec; 
-};
-typedef std::vector<EstimationResult> AllEstimationResults; 
-
-class Estimator {
+class OpenCVArucoEstimator : Estimator {
     public:
-        Estimator(std::shared_ptr<Camera::CameraData> cameraData, cv::aruco::DetectorParameters detectorParams): 
+        OpenCVArucoEstimator (std::shared_ptr<Camera::CameraData> cameraData, cv::aruco::DetectorParameters detectorParams): 
             m_cameraData(cameraData), 
             m_detector(cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), detectorParams)
         {
@@ -37,7 +16,7 @@ class Estimator {
 
         // detect an apriltag in an image
         // this method can be used in threads with out locking Estimator 
-        AllEstimationResults Detect(cv::Mat image) {
+        std::vector<EstimationResult> Detect(cv::Mat image) {
 
             // detecting the tags in image
             std::vector<std::vector<cv::Point2f>> corners;
@@ -53,7 +32,7 @@ class Estimator {
 
             // solvepnp to generate cords
             int maxI = ids.size();
-            AllEstimationResults estimations; 
+            std::vector<EstimationResult> estimations; 
             estimations.reserve(maxI);
             for (int i = 0; i < maxI; i++) {
                 cv::Mat1d rvec;
@@ -86,13 +65,6 @@ class Estimator {
             estimations.shrink_to_fit();
             return std::move(estimations); 
         }; // Detect
-
-        cobalt::promise<AllEstimationResults> PromiseDetect(cv::Mat image) {
-            co_return std::move(Detect(image)); 
-        }
-        cobalt::task<AllEstimationResults> TaskDetect(cv::Mat image) {
-            co_return std::move(Detect(image)); 
-        }
 
     private:
         std::shared_ptr<Camera::CameraData> m_cameraData; 

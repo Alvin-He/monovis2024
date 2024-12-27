@@ -20,12 +20,14 @@
 #include <opencv2/objdetect/charuco_detector.hpp>
 #include <opencv2/videoio.hpp>
 #include <string>
-#include "camera/camera.cpp"
-#include "apriltag/apriltag.hpp"
+#include "camera/Camera.cpp"
+#include "camera/CameraData.cpp"
+#include "apriltag/OpenCVArucoEstimator.cpp"
 #include "network/ApriltagPose.cpp"
 #include "network/network_time.cpp"
 #include "network/redis.cpp"
 #include "program_options/value_semantic.hpp"
+#include "worldPose/World.cpp"
 #include "fmt/include/fmt/chrono.h"
 
 namespace cobalt = boost::cobalt;
@@ -50,14 +52,14 @@ cobalt::main co_main(int argc, char* argv[]) {
             "service uinque resource ID/name")
         ("ip,s", 
             PO::value<std::string>(&serverIP),
-            "apriltag publish server ip address (redis/NT) depending on useNT. default to default ports")
+            "apriltag publish server ip address (redis/NT) depending on useNT. default to default addresses")
         ("port,p", 
             PO::value<uint>(&serverPort),
             "apriltag publish server port (redis/NT) depending on useNT. default to default ports")
         ("useNT,T", 
             PO::value<bool>(&useNT)
-            ->default_value(false),
-            "use NetworkTables for transport instead of redis, only use in single camera set ups! default: false"
+            ->default_value(true),
+            "use NetworkTables for transport instead of redis, only use in single camera set ups! default: true"
         )
         ("camera-id,I", 
             PO::value<int>(&cameraID)
@@ -129,18 +131,18 @@ cobalt::main co_main(int argc, char* argv[]) {
     fmt::println("camera {} initiated", cameraID);
 
     // construct estimator
-    Apriltag::Estimator estimator {s_cameraData, APRILTAG_DETECTOR_PARAMS};
+    Apriltag::OpenCVArucoEstimator estimator {s_cameraData, APRILTAG_DETECTOR_PARAMS};
 
     // construct publisher
     std::unique_ptr<Network::ApriltagPose::Publisher> apriltagPublisher; 
-    if (useNT) apriltagPublisher = std::make_unique<Network::ApriltagPose::NTPublisher>();
-    else apriltagPublisher = std::make_unique<Network::ApriltagPose::RedisPublisher>(UUID);
+    if (useNT) apriltagPublisher = std::make_unique<Network::ApriltagPose::NTPublisher>("");
+    // else apriltagPublisher = std::make_unique<Network::ApriltagPose::RedisPublisher>(UUID);
 
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 
     std::signal(SIGTERM, [](int i){ f_exit = true; }); 
     std::signal(SIGABRT, [](int i){ f_exit = true; }); 
-
+    WorldPose::World robotTracking; 
     // main program loop
     // try {
     fmt::println("starting main program loop");
@@ -151,7 +153,9 @@ cobalt::main co_main(int argc, char* argv[]) {
         auto start = std::chrono::high_resolution_clock::now();
         #endif 
 
-        cv::Mat frame = co_await cameraReader.PromiseRead();
+        // cv::Mat frame = co_await cameraReader.PromiseRead();
+        cv::Mat frame = cv::imread("/mnt/1ECC5E47CC5E18FB/Users/alh/Desktop/monovis2024/frontend/My project/testImg1.png");
+
         // cv::Mat frame = co_await getFrame();
         // fmt::print("\tREAD: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
@@ -164,35 +168,36 @@ cobalt::main co_main(int argc, char* argv[]) {
         // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
         // cv::imshow("undistored", undistored); 
 
-        Apriltag::AllEstimationResults res =  estimator.Detect(frame); //co_await estimator.PromiseDetect(frame); 
+        std::vector<Apriltag::EstimationResult> res =  estimator.Detect(frame); //co_await estimator.PromiseDetect(frame); 
         // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
         // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
-
-        std::vector<Apriltag::World::Pos2DwTag> poses;
+        
+        #ifdef DEBUG 
         for(auto& esti : res) {
-            poses.push_back(
-                Apriltag::World::RobotPoseFromEstimationResult(std::move(esti))
-            );
-            #ifdef DEBUG 
-            auto lastPose = poses.back();
-            fmt::print("CUDA: Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}", lastPose.id, 
+            auto lastPose = WorldPose::Solvers::RobotPoseFromEstimationResult(esti); 
+            fmt::print("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
                 std::sqrt(std::pow(lastPose.x, 2) + std::pow(lastPose.y,2)), // pathegram formula distance calc
                 lastPose.x, lastPose.y, lastPose.rot);
-            #endif
         }
+        #endif
+
         // fmt::print("\tESTIMATE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
-        co_await apriltagPublisher->publish(std::move(poses), ts);
+        // co_await apriltagPublisher->publish(std::move(poses), ts);
         // fmt::print("\tPUBLISH: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
-
+        robotTracking.Update(res);
+        auto pose = robotTracking.GetRobotPose();
+        fmt::println("{}, {} r:{}", pose.x, pose.y, pose.rot);
         #ifdef DEBUG
         fmt::print("\tTotal Time: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         fmt::println("");
         
         #endif
         #ifdef GUI
-        cv::waitKey(1);
+        // cv::waitKey(1);
         #endif
+        cv::waitKey();
+        break;
     } 
     // } catch (...) {
     //     std::printf("Exception!"); 

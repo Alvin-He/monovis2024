@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cobalt/detached.hpp"
-#include "fmt/core.h"
+#include "worldPose/TypeDefs.cpp"
 #include "global.cpp"
 #include "common.cpp"
 
@@ -23,7 +23,7 @@ namespace RobotPose {
         Publisher() = default;
         virtual ~Publisher() = default; 
         
-        virtual cobalt::detached publish(Apriltag::World::Pos2D pose, int64_t timestamp) = 0;
+        virtual cobalt::detached publish(WorldPose::Pos2D pose, int64_t timestamp) = 0;
     }; // Publisher interface
 
 
@@ -36,7 +36,7 @@ namespace RobotPose {
             rotTopic(std::move(roboPosTable->GetDoubleTopic("r").GetEntry(0))),
             tsTopic(std::move(roboPosTable->GetDoubleTopic("ts").GetEntry(0)))
         {}
-        cobalt::detached publish(Apriltag::World::Pos2D pose, int64_t timestamp) {
+        cobalt::detached publish(WorldPose::Pos2D pose, int64_t timestamp) {
             xTopic.Set(pose.x);
             yTopic.Set(pose.y);
             rotTopic.Set(pose.rot);

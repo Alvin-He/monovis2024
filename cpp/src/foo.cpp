@@ -10,7 +10,7 @@
 #include "fmt/include/fmt/chrono.h"
 #include <boost/asio/steady_timer.hpp>
 
-#include "camera/cameraData.cpp"
+#include "camera/CameraData.cpp"
 
 cobalt::main co_main(int argc, char* argv[]) {
 
