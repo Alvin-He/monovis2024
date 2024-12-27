@@ -55,8 +55,8 @@ cobalt::main co_main(int argc, char* argv[]) {
             "monovis redis server port")
         ("useNTForReceive,T", 
             PO::value<bool>(&useNTForReceive)
-            ->default_value(false),
-            "receive estimation info on NetworkTables instead of redis, only use in single camera set ups! default: false"
+            ->default_value(true),
+            "receive estimation info on NetworkTables instead of redis, only use in single camera set ups! default: true"
         )
     ;
     PO::variables_map cliArgMap; 
