@@ -9,6 +9,7 @@
 #define BOOST_THREAD_VERSION 5
 
 std::atomic<bool> f_exit = false; 
+std::atomic<int> f_exitCode = 0;
 
 constexpr double APRILTAG_BLOCK_SIZE_cm = 2.0;  
 

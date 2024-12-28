@@ -11,6 +11,7 @@
 #include "ntcore/networktables/NetworkTable.h"
 #include "ntcore/networktables/NetworkTableInstance.h"
 #include "ntcore/networktables/DoubleTopic.h"
+#include "ntcore/networktables/IntegerTopic.h"
 
 #include <cstdint>
 #include <fmt/include/fmt/compile.h>
@@ -30,13 +31,14 @@ namespace RobotPose {
     class NTPublisher : public Publisher {
         public:
         NTPublisher(const std::string UUID) :
-            roboPosTable(nt::NetworkTableInstance::GetDefault().GetTable("SmartDashboard")->GetSubTable("Vision")->GetSubTable("RobotPos")), 
+            roboPosTable(nt::NetworkTableInstance::GetDefault().GetTable("Vision")->GetSubTable("RobotPos")), 
             xTopic(std::move(roboPosTable->GetDoubleTopic("x").GetEntry(0))),
             yTopic(std::move(roboPosTable->GetDoubleTopic("y").GetEntry(0))),
             rotTopic(std::move(roboPosTable->GetDoubleTopic("r").GetEntry(0))),
-            tsTopic(std::move(roboPosTable->GetDoubleTopic("ts").GetEntry(0)))
+            tsTopic(std::move(roboPosTable->GetIntegerTopic("ts").GetEntry(0)))
         {}
         cobalt::detached publish(WorldPose::Pos2D pose, int64_t timestamp) {
+            // roboPosTable->GetIntegerTopic("ts");
             xTopic.Set(pose.x);
             yTopic.Set(pose.y);
             rotTopic.Set(pose.rot);
@@ -45,7 +47,8 @@ namespace RobotPose {
         }
         private:
             std::shared_ptr<nt::NetworkTable> roboPosTable; 
-            nt::DoubleEntry xTopic, yTopic, rotTopic, tsTopic; 
+            nt::DoubleEntry xTopic, yTopic, rotTopic;
+            nt::IntegerEntry tsTopic; 
     }; // NTPublisher
 }
 };

@@ -4,6 +4,7 @@
 #include "global.cpp"
 #include "common.cpp"
 
+#include <algorithm>
 #include <array>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/algorithm/string.hpp>
@@ -18,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/persistence.hpp>
 #include <span>
 #include <string>
 #include <string_view>
@@ -102,13 +104,12 @@ namespace ApriltagPose {
         NTReceiver() {
             this->m_table = nt::NetworkTableInstance::GetDefault().GetTable(KNTCamerasTable);
 
-            m_table->AddSubTableListener([&] (nt::NetworkTable *, std::basic_string_view<char>, std::shared_ptr<nt::NetworkTable> cameraTable){
-                cameraTable->AddSubTableListener([&] (nt::NetworkTable *, std::basic_string_view<char>, std::shared_ptr<nt::NetworkTable> tagTable)  {
-                    m_estimationResultTables.push_back(tagTable);
+            m_table->AddSubTableListener([&] (nt::NetworkTable *, std::basic_string_view<char>camName, std::shared_ptr<nt::NetworkTable> cameraTable){
+                m_cameraTables.emplace_back(cameraTable);
+                cameraTable->AddSubTableListener([&] (nt::NetworkTable *, std::basic_string_view<char> tagID, std::shared_ptr<nt::NetworkTable> tagTable)  {
+                    m_estimationResultTables.push_back(tagTable);                    
                 });
             }); 
-
-            fmt::println("WARN: Publishers::NT::ApriltagPosePublisher for NetworkTables is being used. This is not compatiable with mutiple cameras, running another publisher to the same networktables will result in data lost if the same tag is detected in more than 1 camera!");
         }
         
         cobalt::promise<std::tuple<std::vector<int64_t>, std::vector<Apriltag::EstimationResult>>> receive() {
@@ -120,8 +121,8 @@ namespace ApriltagPose {
                 if (used) continue;
                 tagTab->PutBoolean("isUsed", true); 
 
-                auto cameraUUID = tagTab->GetString("camID", "null");
-                if (cameraUUID == "null") continue;
+                auto cameraUUID = tagTab->GetString("camId", "");
+                if (cameraUUID.length() <= 0) continue;
                 
                 auto rawTvec = tagTab->GetNumberArray("tvec", {});
                 if (rawTvec.size() != 3) continue;
@@ -155,6 +156,7 @@ namespace ApriltagPose {
         private: 
             std::shared_ptr<nt::NetworkTable> m_table; 
             std::vector<std::shared_ptr<nt::NetworkTable>> m_estimationResultTables;  
+            std::vector<std::shared_ptr<nt::NetworkTable>> m_cameraTables; // cached for lifetime reasons
     }; // NTReceiver
 
     /** Redis module needs a redo to be compatiable with the new scheme, low priority tho

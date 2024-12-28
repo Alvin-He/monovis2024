@@ -7,11 +7,15 @@
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/program_options.hpp>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include "apriltag/Estimator.ipp"
 #include "network/RobotPose.cpp"
 #include "network/ApriltagPose.cpp"
 #include "network/network_time.cpp"
+#include "camera/CameraData.cpp"
+#include "conf/parser.cpp"
 
 #include "ntcore/networktables/NetworkTableInstance.h"
 #include "program_options/value_semantic.hpp"
@@ -23,7 +27,7 @@ namespace PO = boost::program_options;
 
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
-    std::string UUID;
+    std::string camerasTomlPath;
     std::string ntRioIP;
     uint ntRioPort;
     std::string redisIP; 
@@ -33,10 +37,10 @@ cobalt::main co_main(int argc, char* argv[]) {
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("uuid,u", 
-            PO::value<std::string>(&UUID)
-            ->default_value("unnamed"), 
-            "service uinque resource ID/name")
+        ("camera-config-file,f", 
+            PO::value<std::string>(&camerasTomlPath)
+            ->default_value("cameras.toml"), 
+            "path to cameras.toml, default cameras.toml")
         ("nt-ip,n", 
             PO::value<std::string>(&ntRioIP)
             ->default_value("127.0.0.1"), 
@@ -56,7 +60,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         ("useNTForReceive,T", 
             PO::value<bool>(&useNTForReceive)
             ->default_value(true),
-            "receive estimation info on NetworkTables instead of redis, only use in single camera set ups! default: true"
+            "receive estimation info on NetworkTables instead of redis, default: true"
         )
     ;
     PO::variables_map cliArgMap; 
@@ -70,20 +74,25 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // init redis 
     if (!useNTForReceive) {
-        co_await RedisDB::init(redisIP, std::to_string(redisPort), UUID); 
+        co_await RedisDB::init(redisIP, std::to_string(redisPort), "pose-service"); 
         co_await RedisDB::ping();
     }
 
     // init network tables
     nt::NetworkTableInstance ntRio = nt::NetworkTableInstance::GetDefault();
-    ntRio.StartClient4("monovis-pose-" + UUID);
+    ntRio.StartClient4("monovis-pose-service");
     ntRio.SetServer(ntRioIP.c_str(), ntRioPort); 
     
-    std::unique_ptr<Network::RobotPose::Publisher> roboPosPublisher = std::make_unique<Network::RobotPose::NTPublisher>(UUID); 
+    std::unique_ptr<Network::RobotPose::Publisher> roboPosPublisher = std::make_unique<Network::RobotPose::NTPublisher>("monovis-pose-service"); 
 
     std::unique_ptr<Network::ApriltagPose::Receiver> estiInfoReceiver; 
     if (useNTForReceive) estiInfoReceiver = std::make_unique<Network::ApriltagPose::NTReceiver>();
     // else estiInfoReceiver = std::make_unique<Network::ApriltagPose::RedisReceiver>(UUID);
+
+    
+    Camera::PopulateGlobalCameraRegistraFromTOML(
+        Conf::LoadToml(camerasTomlPath)
+    );
 
     WorldPose::World robotTracking; 
        
@@ -102,14 +111,17 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         auto [timestamps, validPackets] = co_await estiInfoReceiver->receive();
 
-        auto avgTs = h::average(timestamps); 
-        robotTracking.Update(validPackets);
-        auto robotGlobalPose = robotTracking.GetRobotPose();
-        roboPosPublisher->publish(robotGlobalPose, avgTs); 
-
-        #ifdef DEBUG 
-        fmt::println("UPDATE: X: {}, Y: {}, R: {}", robotGlobalPose.x, robotGlobalPose.y, robotGlobalPose.rot);
-        #endif
+        if (validPackets.size() > 0) {
+            auto avgTs = h::average(timestamps); 
+            fmt::println("ret val {}", avgTs); 
+            robotTracking.Update(validPackets);
+            auto robotGlobalPose = robotTracking.GetRobotPose();
+            roboPosPublisher->publish(robotGlobalPose, avgTs); 
+    
+            #ifdef DEBUG 
+            fmt::println("UPDATE: X: {}, Y: {}, R: {}", robotGlobalPose.x, robotGlobalPose.y, robotGlobalPose.rot);
+            #endif
+        }
 
         co_await timer.async_wait(cobalt::use_op);
     } 

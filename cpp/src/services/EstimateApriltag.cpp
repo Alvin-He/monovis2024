@@ -9,6 +9,7 @@
 #include <boost/asio.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/program_options.hpp>
+#include <exception>
 #include <memory>
 #include <networktables/NetworkTableInstance.h>
 #include <ntcore_cpp.h>
@@ -19,6 +20,8 @@
 #include <opencv2/objdetect/aruco_detector.hpp>
 #include <opencv2/objdetect/charuco_detector.hpp>
 #include <opencv2/videoio.hpp>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include "camera/Camera.cpp"
 #include "camera/CameraData.cpp"
@@ -37,19 +40,23 @@ namespace PO = boost::program_options;
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
     std::string UUID;
+    std::string cameraUUID;
+    std::string camerasTomlPath;
     std::string serverIP = "default"; 
     uint serverPort = 0; 
     bool useNT = false;
-    int cameraID = 0; 
-    std::string cameraCalibrationFilePath;
 
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("uuid,u", 
+        ("camera-uuid,c", 
             PO::value<std::string>(&UUID)
-            ->default_value("monovis-unnamed"), 
-            "service uinque resource ID/name")
+            ->required(),
+            "cameras UUID to use, this uuid must match the uuids provided by camera-config-file")
+        ("camera-config-file,f", 
+            PO::value<std::string>(&camerasTomlPath)
+            ->default_value("cameras.toml"), 
+            "path to cameras.toml, default cameras.toml")
         ("ip,s", 
             PO::value<std::string>(&serverIP),
             "apriltag publish server ip address (redis/NT) depending on useNT. default to default addresses")
@@ -61,14 +68,6 @@ cobalt::main co_main(int argc, char* argv[]) {
             ->default_value(true),
             "use NetworkTables for transport instead of redis, only use in single camera set ups! default: true"
         )
-        ("camera-id,I", 
-            PO::value<int>(&cameraID)
-            ->default_value(0),
-            "camera ID")
-        ("camera-calibration-file,F",
-            PO::value<std::string>(&cameraCalibrationFilePath)
-            ->default_value("calibrationResults_1.xml"), 
-            "camera calibration file path")
     ;
     PO::variables_map cliArgMap; 
     PO::store(PO::command_line_parser(argc, argv).options(cliOptions).run(), cliArgMap); 
@@ -98,10 +97,11 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     // init RedisDB access if enabled
     if (!useNT) {
-        serverIP = serverIP != "default" ? serverIP : "127.0.0.1"; 
-        serverPort = serverPort != -1 ? serverPort : 6379; 
-        co_await RedisDB::init(serverIP, std::to_string(serverPort), UUID); 
-        co_await RedisDB::ping();
+        throw std::runtime_error("redis is currently unusuable");
+        // serverIP = serverIP != "default" ? serverIP : "127.0.0.1"; 
+        // serverPort = serverPort != -1 ? serverPort : 6379; 
+        // co_await RedisDB::init(serverIP, std::to_string(serverPort), camerasTomlPath); 
+        // co_await RedisDB::ping();
     }else{
     // init network tables if enabled
         serverIP = serverIP != "default" ? serverIP : "127.0.0.1"; 
@@ -111,38 +111,42 @@ cobalt::main co_main(int argc, char* argv[]) {
         ntRio.SetServer(serverIP.c_str(), serverPort); 
     }
 
-    // bootstrap camera
-    cv::VideoCapture cap{cameraID}; 
 
-    // static to ensure cameraData always exists 
-    static Camera::CameraData cameraData = Camera::LoadCalibDataFromXML(cameraCalibrationFilePath);
-    cameraData.id = cameraID; 
+    Camera::PopulateGlobalCameraRegistraFromTOML(Conf::LoadToml(camerasTomlPath));
+
+    auto cdi = Camera::GlobalCameraRegistra.find(UUID);
+    if (cdi == Camera::GlobalCameraRegistra.end()) throw std::runtime_error("provided uuid isn't found in cameras.toml");
+    auto cameraData = cdi->second;    
+
+    // bootstrap camera
+    cv::VideoCapture cap{cameraData->id}; 
 
     Camera::AdjustCameraDataAndCapture(cameraData, cap);     
-    Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData.calibratedAspectRatio, K::PROC_FRAME_SIZE);
+    Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData->calibratedAspectRatio, K::PROC_FRAME_SIZE);
 
     Camera::FrameGenerator cameraReader {cap};
     // for (auto& buf : frameBufs) {
     //     cap.read(buf);
     // }
     // cameraRead(cap, readReq, readFinished).detach(); 
-    std::shared_ptr<Camera::CameraData> s_cameraData (&cameraData); 
 
-    fmt::println("camera {} initiated", cameraID);
+    fmt::println("camera {} initiated", cameraData->id);
 
     // construct estimator
-    Apriltag::OpenCVArucoEstimator estimator {s_cameraData, APRILTAG_DETECTOR_PARAMS};
+    Apriltag::OpenCVArucoEstimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
 
     // construct publisher
     std::unique_ptr<Network::ApriltagPose::Publisher> apriltagPublisher; 
-    if (useNT) apriltagPublisher = std::make_unique<Network::ApriltagPose::NTPublisher>("");
+    if (useNT) apriltagPublisher = std::make_unique<Network::ApriltagPose::NTPublisher>(UUID);
     // else apriltagPublisher = std::make_unique<Network::ApriltagPose::RedisPublisher>(UUID);
+
+    // WorldPose::World robotTracking; 
 
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 
     std::signal(SIGTERM, [](int i){ f_exit = true; }); 
     std::signal(SIGABRT, [](int i){ f_exit = true; }); 
-    WorldPose::World robotTracking; 
+
     // main program loop
     // try {
     fmt::println("starting main program loop");
@@ -153,8 +157,8 @@ cobalt::main co_main(int argc, char* argv[]) {
         auto start = std::chrono::high_resolution_clock::now();
         #endif 
 
-        // cv::Mat frame = co_await cameraReader.PromiseRead();
-        cv::Mat frame = cv::imread("/mnt/1ECC5E47CC5E18FB/Users/alh/Desktop/monovis2024/frontend/My project/testImg1.png");
+        cv::Mat frame = co_await cameraReader.PromiseRead();
+        // cv::Mat frame = cv::imread("/mnt/1ECC5E47CC5E18FB/Users/alh/Desktop/monovis2024/frontend/My project/testImg1.png");
 
         // cv::Mat frame = co_await getFrame();
         // fmt::print("\tREAD: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
@@ -183,21 +187,21 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         // fmt::print("\tESTIMATE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
-        // co_await apriltagPublisher->publish(std::move(poses), ts);
+        co_await apriltagPublisher->publish(std::move(res), ts);
         // fmt::print("\tPUBLISH: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
-        robotTracking.Update(res);
-        auto pose = robotTracking.GetRobotPose();
-        fmt::println("{}, {} r:{}", pose.x, pose.y, pose.rot);
+        // robotTracking.Update(res);
+        // auto pose = robotTracking.GetRobotPose();
+        // fmt::println("{}, {} r:{}", pose.x, pose.y, pose.rot);
         #ifdef DEBUG
         fmt::print("\tTotal Time: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         fmt::println("");
         
         #endif
         #ifdef GUI
-        // cv::waitKey(1);
+        cv::waitKey(1);
         #endif
-        cv::waitKey();
-        break;
+        // cv::waitKey();
+        // break;
     } 
     // } catch (...) {
     //     std::printf("Exception!"); 

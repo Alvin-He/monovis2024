@@ -1,4 +1,6 @@
 #pragma once
+#include "fmt/include/fmt/std.h"
+#include <numeric>
 #include <opencv4/opencv2/opencv.hpp>
 #include <boost/cobalt.hpp>
 #include <algorithm>
@@ -72,9 +74,10 @@ vector_d reject_outliers_2(const vector_d& linearArray, double m = 1.2) {
 
 template<typename T>
 T average(const std::vector<T>& data) {
-    T sum = std::accumulate(data.begin(), data.end(), 0.0); 
-    T size = (data.begin() - data.end()) || 1;
-    return sum / size; 
+    if (data.empty()) return 0;
+    T sum = std::reduce(data.begin(), data.end()); 
+    T size = static_cast<T>(data.size());
+    return sum/size; 
 }
 
 double average(const vector_d& data) {

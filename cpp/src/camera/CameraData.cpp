@@ -1,19 +1,25 @@
 #pragma once 
 
 #include "common.cpp"
+#include <array>
 #include <map>
 #include <memory>
 #include <opencv2/core/types.hpp>
 #include <opencv4/opencv2/opencv.hpp>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include "conf/parser.cpp"
 
 namespace Camera
 {
     struct CameraData {
+        // Any changes to this struct that affects parsing need to update conf/Parse_cameras_toml
+
         int id = 0; 
         // int camToRobotPos{4} = {800,250,300, 0}, # anchored at bottom right of robot
-        double camToRobotPos[4] = {0,0,0, 270};
+        std::array<double, 4> cameraPos = {0,0,0, 270};
         // std::vector<std::vector<double>> matrix =
         //   {{710.8459662, 0, 584.09769116},
         //   {0.,710.64515618, 485.94212983},
@@ -51,18 +57,46 @@ namespace Camera
         return std::move(cameraMainData); 
     }
 
+    CameraData ParseCameraData(const toml::table& cameraDataTable) {
+        auto calibrationFile = Conf::parse<std::string>(cameraDataTable, "calibration_file"); 
+        
+        auto res = LoadCalibDataFromXML(calibrationFile);
+
+        res.id = Conf::parse<int>(cameraDataTable, "device_id");
+        res.cameraPos = {
+            Conf::parse<double>(cameraDataTable, "x"),
+            Conf::parse<double>(cameraDataTable, "y"),
+            Conf::parse<double>(cameraDataTable, "z"),
+            Conf::parse<double>(cameraDataTable, "r")
+        };
+
+        return res;
+    }
+
+    void PopulateGlobalCameraRegistraFromTOML(const toml::table& cameras_toml) {
+        for (auto& [k, v] : cameras_toml) {
+            auto uuid = k.str();
+            if (!v.is_table()) throw std::runtime_error(fmt::format("uuid: {} is not a table", uuid)); 
+            auto tab = *v.as_table();
+            
+            auto d = std::make_shared<CameraData>(ParseCameraData(tab));
+
+            GlobalCameraRegistra.insert_or_assign(std::string{uuid}, d); 
+        }
+    }
+
     // adjust camera matrix for resized smaller image
-    void AdjustCameraDataForNewImageSize(CameraData& cameraData, const cv::Size2d& originalFrameSize, const cv::Size2d& targetFrameSize) {
-        cameraData.matrix(0, 0) *= (targetFrameSize.width / originalFrameSize.width); // fx
-        cameraData.matrix(0, 2) *= (targetFrameSize.width / originalFrameSize.width); // cx
-        cameraData.matrix(1, 1) *= (targetFrameSize.height / originalFrameSize.height); // fy
-        cameraData.matrix(1, 2) *= (targetFrameSize.height / originalFrameSize.height); // cy
+    void AdjustCameraDataForNewImageSize(std::shared_ptr<CameraData> cameraData, const cv::Size2d& originalFrameSize, const cv::Size2d& targetFrameSize) {
+        cameraData->matrix(0, 0) *= (targetFrameSize.width / originalFrameSize.width); // fx
+        cameraData->matrix(0, 2) *= (targetFrameSize.width / originalFrameSize.width); // cx
+        cameraData->matrix(1, 1) *= (targetFrameSize.height / originalFrameSize.height); // fy
+        cameraData->matrix(1, 2) *= (targetFrameSize.height / originalFrameSize.height); // cy
     }
 
     // Modifiys the capture aspect ratio to the calibrated aspect ratio and rescales the camera matrix for a desired frame size
-    void AdjustCameraDataAndCapture(CameraData& cameraData, cv::VideoCapture& cap) {
-        cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData.calibratedAspectRatio.width);
-        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData.calibratedAspectRatio.height);
+    void AdjustCameraDataAndCapture(std::shared_ptr<CameraData> cameraData, cv::VideoCapture& cap) {
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData->calibratedAspectRatio.width);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData->calibratedAspectRatio.height);
        
         // cameraData.matrix = cv::getOptimalNewCameraMatrix(cameraData.matrix, cameraData.distCoeffs, cameraData.calibratedAspectRatio, -1, targetFrameSize);    
     }

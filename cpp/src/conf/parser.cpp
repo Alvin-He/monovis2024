@@ -22,13 +22,13 @@ toml::table LoadToml(std::string file, bool critical = true) {
 }
 
 // parse a toml item
-template <typename T> T parse(const toml::table& configTable, const std::string& path, std::optional<T> _default = std::nullopt) {
+template <typename T> T parse(const toml::table& tab, const std::string& path, std::optional<T> _default = std::nullopt) {
     try {
 
     if (_default.has_value()) {
-        return configTable.at_path(path).value<T>().template value_or<T>(std::move(_default.value()));
+        return tab.at_path(path).value<T>().template value_or<T>(std::move(_default.value()));
     }
-    return configTable.at_path(path).value<T>().value(); 
+    return tab.at_path(path).value<T>().value(); 
     
     } catch(const std::exception& e) {
         std::cerr << "ERROR: " + path + " is required, but is not set in config file!" << std::endl; 

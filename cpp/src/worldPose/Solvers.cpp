@@ -23,12 +23,12 @@ namespace WorldPose::Solvers { // Solvers
         double yaw; 
         
         yaw = -(*res.camToTagRvec[1]); 
-        yaw += res.cameraInfo->camToRobotPos[3] + tag.yaw; 
+        yaw += res.cameraInfo->cameraPos[3] - tag.yaw; 
         yaw = 180.0 - yaw; 
         yaw = h::NormalizeAngle(yaw);
 
-        double camX = *res.camToTagTvec[2] + res.cameraInfo->camToRobotPos[0]; // camera parallel/z is same as world x for horzontally mounted camera
-        double camY = *res.camToTagTvec[0] + res.cameraInfo->camToRobotPos[1]; // camera through/x is same as world y
+        double camX = *res.camToTagTvec[2] - res.cameraInfo->cameraPos[0]; // camera parallel/z is same as world x for horzontally mounted camera
+        double camY = *res.camToTagTvec[0] - res.cameraInfo->cameraPos[1]; // camera through/x is same as world y
 
         auto robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
