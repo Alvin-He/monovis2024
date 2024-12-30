@@ -113,7 +113,6 @@ cobalt::main co_main(int argc, char* argv[]) {
 
         if (validPackets.size() > 0) {
             auto avgTs = h::average(timestamps); 
-            fmt::println("ret val {}", avgTs); 
             robotTracking.Update(validPackets);
             auto robotGlobalPose = robotTracking.GetRobotPose();
             roboPosPublisher->publish(robotGlobalPose, avgTs); 
@@ -133,6 +132,5 @@ cobalt::main co_main(int argc, char* argv[]) {
     fmt::println("Exiting..."); 
     ntRio.StopClient(); 
 
-    std::terminate();
     co_return 0; 
 }

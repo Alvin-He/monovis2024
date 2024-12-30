@@ -32,6 +32,7 @@
 #include "program_options/value_semantic.hpp"
 #include "worldPose/World.cpp"
 #include "fmt/include/fmt/chrono.h"
+#include "network/ReadNetworkFrame.cpp"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -147,6 +148,8 @@ cobalt::main co_main(int argc, char* argv[]) {
     std::signal(SIGTERM, [](int i){ f_exit = true; }); 
     std::signal(SIGABRT, [](int i){ f_exit = true; }); 
 
+    
+
     // main program loop
     // try {
     fmt::println("starting main program loop");
@@ -156,7 +159,12 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef DEBUG
         auto start = std::chrono::high_resolution_clock::now();
         #endif 
-
+        // cv::Mat frame; 
+        // if (auto ret = co_await Network::ReadFrame("127.0.0.1", "8081")) {
+        //     frame = ret.value(); 
+        // } else {
+        //     continue;
+        // }
         cv::Mat frame = co_await cameraReader.PromiseRead();
         // cv::Mat frame = cv::imread("/mnt/1ECC5E47CC5E18FB/Users/alh/Desktop/monovis2024/frontend/My project/testImg1.png");
 
@@ -179,15 +187,14 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef DEBUG 
         for(auto& esti : res) {
             auto lastPose = WorldPose::Solvers::RobotPoseFromEstimationResult(esti); 
-            fmt::print("Tag {}, dist {:.2f}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
-                std::sqrt(std::pow(lastPose.x, 2) + std::pow(lastPose.y,2)), // pathegram formula distance calc
+            fmt::print("Tag {}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
                 lastPose.x, lastPose.y, lastPose.rot);
         }
         #endif
 
         // fmt::print("\tESTIMATE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
-        co_await apriltagPublisher->publish(std::move(res), ts);
+        co_await apriltagPublisher->publish(res, ts);
         // fmt::print("\tPUBLISH: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         // robotTracking.Update(res);
         // auto pose = robotTracking.GetRobotPose();
@@ -214,6 +221,6 @@ cobalt::main co_main(int argc, char* argv[]) {
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
-    std::terminate(); 
+
     co_return 0; 
 }
