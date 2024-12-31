@@ -3,10 +3,11 @@
 #include "helpers.cpp"
 #include "TypeDefs.cpp"
 #include "apriltag/Estimator.ipp"
-#include <tuple>
 #include <vector>
+#include "Field.cpp"
 
-namespace WorldPose::Solvers { // Solvers
+
+namespace World::Solvers { // Solvers
     std::pair<double, double> CamRelativeToAbsoulote(double cx, double cy, double tx, double ty, double tYaw) {
         double theta = h::NormalizeAngle(180.0 - tYaw); 
         auto cords = h::rotatePoint(cx, cy, theta); 
@@ -18,7 +19,7 @@ namespace WorldPose::Solvers { // Solvers
         //            fmt::println("tvec: {}", res.camToTagTvec); 
         //            fmt::println("rvev: {}", res.camToTagRvec); 
 
-        TagLocation tag = K::FIELD.tags[res.id]; 
+        Field::TagLocation tag = Field::tags[res.id];
 
         double yaw; 
         

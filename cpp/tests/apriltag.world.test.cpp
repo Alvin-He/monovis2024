@@ -2,7 +2,7 @@
 #include "fmt/core.h"
 #include "math/tools/assert.hpp"
 #include <cassert>
-#include "worldPose/World.cpp"
+#include "world/World.cpp"
 
 // TODO: Fix implenmentation
 
@@ -20,14 +20,14 @@
 //         {230, -160, 324}
 //     };
 
-//     auto isInExpected = [&] (WorldPose::Pos2D pose) {
+//     auto isInExpected = [&] (World::Pos2D pose) {
 //         return
 //             197 < pose.x && pose.x < 210 &&
 //             326 < pose.y && pose.y < 340 &&
 //             78 < pose.rot && pose.rot < 80;  
 //     };
 
-//     WorldPose::World world;
+//     World::World world;
 //     world.Update(cords); 
 
 //     fmt::println("({}, {}) r:{}", world.GetRobotPose().x, world.GetRobotPose().y, world.GetRobotPose().rot); 

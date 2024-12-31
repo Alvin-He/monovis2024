@@ -3,11 +3,11 @@
 #include "Solvers.cpp"
 #include "TypeDefs.cpp"
 #include <vector>
-namespace WorldPose {
+namespace World {
     // Tracking for everything known in this world
-    class World {
+    class RobotPose {
         public:
-        World() = default;
+        RobotPose() = default;
 
         void Update(const std::vector<Apriltag::EstimationResult>& estimationResults) {
             if (estimationResults.size()<1) return; 

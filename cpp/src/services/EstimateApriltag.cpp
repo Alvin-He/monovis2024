@@ -30,7 +30,7 @@
 #include "network/network_time.cpp"
 #include "network/redis.cpp"
 #include "program_options/value_semantic.hpp"
-#include "worldPose/World.cpp"
+#include "world/World.cpp"
 #include "fmt/include/fmt/chrono.h"
 #include "network/ReadNetworkFrame.cpp"
 
@@ -42,7 +42,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     // cli argument parsing
     std::string UUID;
     std::string cameraUUID;
-    std::string camerasTomlPath;
+    std::string configFolderPath;
     std::string serverIP = "default"; 
     uint serverPort = 0; 
     bool useNT = false;
@@ -50,14 +50,14 @@ cobalt::main co_main(int argc, char* argv[]) {
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("camera-uuid,c", 
+        ("config,c", 
+            PO::value<std::string>(&configFolderPath)
+            ->default_value("./"), 
+            "path to config folder, default current working directory")
+        ("camera-uuid,u", 
             PO::value<std::string>(&UUID)
             ->required(),
             "cameras UUID to use, this uuid must match the uuids provided by camera-config-file")
-        ("camera-config-file,f", 
-            PO::value<std::string>(&camerasTomlPath)
-            ->default_value("cameras.toml"), 
-            "path to cameras.toml, default cameras.toml")
         ("ip,s", 
             PO::value<std::string>(&serverIP),
             "apriltag publish server ip address (redis/NT) depending on useNT. default to default addresses")
@@ -113,8 +113,9 @@ cobalt::main co_main(int argc, char* argv[]) {
     }
 
 
-    Camera::PopulateGlobalCameraRegistraFromTOML(Conf::LoadToml(camerasTomlPath));
-
+    Camera::PopulateGlobalCameraRegistraFromTOML(
+        Conf::LoadToml(fmt::format("{}/cameras.toml", configFolderPath))
+    );
     auto cdi = Camera::GlobalCameraRegistra.find(UUID);
     if (cdi == Camera::GlobalCameraRegistra.end()) throw std::runtime_error("provided uuid isn't found in cameras.toml");
     auto cameraData = cdi->second;    
@@ -141,7 +142,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     if (useNT) apriltagPublisher = std::make_unique<Network::ApriltagPose::NTPublisher>(UUID);
     // else apriltagPublisher = std::make_unique<Network::ApriltagPose::RedisPublisher>(UUID);
 
-    // WorldPose::World robotTracking; 
+    // World::RobotPose robotTracking; 
 
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 
@@ -186,7 +187,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         
         #ifdef DEBUG 
         for(auto& esti : res) {
-            auto lastPose = WorldPose::Solvers::RobotPoseFromEstimationResult(esti); 
+            auto lastPose = World::Solvers::RobotPoseFromEstimationResult(esti); 
             fmt::print("Tag {}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
                 lastPose.x, lastPose.y, lastPose.rot);
         }

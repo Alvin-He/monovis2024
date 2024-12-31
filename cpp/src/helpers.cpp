@@ -96,6 +96,10 @@ cv::Mat rad2deg(cv::Mat src) {
     return src * RAD2DEG_RATIO; 
 }
 
+template<typename T>
+T rad2deg(T src) {
+    return src * RAD2DEG_RATIO;
+}
 
 double NormalizeAngle(double s) {
     return std::remainder(s, 360); 

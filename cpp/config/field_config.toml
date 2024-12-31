@@ -1,0 +1,77 @@
+# 
+# This file contains the field apriltag locations and field definations
+#
+# Each table/section will contain documentation for each section
+
+# WARNING: ALL Rotations are in DEGREES and ALL Lengths are in CENTIMETERS(CM)  
+
+# general options about the playing field
+[field]
+    # weather or not to use the official apriltags json file
+    # Only set this to `false` if only tags defined in the [apriltag_overrides] sections are desired
+    # bool, true --> use json file, false --> use the apriltags defined in [apriltag_overrides] only
+    use_json_file = true
+
+    # file path to the FIRST Official Apriltags Json files, they can normally be found in here:
+    # https://github.com/wpilibsuite/allwpilib/tree/main/apriltag/src/main/native/resources/edu/wpi/first/apriltag
+    game_apriltag_json_file = "2024-crescendo.json"
+
+    # field dimensions, values defined here will take precedence than the field dimensions defined in the json file 
+    # int, centimeter(CM), -1 --> use the json provided values / default values
+    x_length = -1
+    y_width = -1
+
+# Custom Apriltag Definations that will take precedance to `game_apriltag_json_file`
+# rotation is in DEGREE, `x`,`y`,`z` are all in CENTIMETERS(CM), 
+# DO NOT INPUT QUARTERNION HERE 
+[override]
+    # TAG FORMAT:
+    #
+    # [override.<tag id>] #< int -- tag id to define/override
+    #   enabled = true #< bool -- weather or not this tag is valid, if `false`, 
+    #                              this tag will be ignored and not be detected, by default all tags are enabled
+    #   x = 0 #< double - centimeters -- x position(relative to scoring table side wall) of tag
+    #   y = 0 #< double - centimeters -- y position(relative to blue alliance station wall) of tag
+    #   z = 0 #< double - centimeters -- z position(height off of ground) of tag 
+    #   r = 0 #< double - degrees -- rotation of tag (aka the absoulote direction that the tag is facing towards) 
+    #
+    # ALL FIELDS MUST BE DEFINED
+    
+    # EXAMPLE/TEMPlATE, copy this to make a new tag/override a tag
+    # [override.0]
+    #   enabled = false
+    #   x = 0
+    #   y = 0
+    #   z = 0
+    #   r = 0 
+
+
+    # 102 class room overrides
+    [override.6] # door side wall fixed tags
+        enabled = true
+        x = 185
+        y = 0
+        z = 115
+        r = 90 
+
+    [override.3] # door side wall fixed tags
+        enabled = true
+        x = 318
+        y = 0
+        z = 115
+        r = 90
+    
+
+    [override.4] # window wall fixed tags
+        enabled = true
+        x = 0
+        y = 211
+        z = 111.5
+        r = 0 
+
+    [override.5] # window wall fixed tags
+        enabled = true
+        x = 0
+        y = 317.5
+        z = 88
+        r = 0

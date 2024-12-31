@@ -13,7 +13,7 @@
 #include "ntcore/networktables/NetworkTableInstance.h"
 #include "ntcore/networktables/DoubleTopic.h"
 #include "redis.cpp"
-#include "worldPose/TypeDefs.cpp"
+#include "world/TypeDefs.cpp"
 #include "camera/CameraData.cpp"
 #include <fmt/include/fmt/compile.h>
 #include <map>
@@ -192,7 +192,7 @@ namespace ApriltagPose {
             this->m_pubUUID = UUID; 
         }
 
-        cobalt::promise<void> publish(std::vector<WorldPose::Pos2DwTag> poses, int64_t timeStamp) {
+        cobalt::promise<void> publish(std::vector<World::Pos2DwTag> poses, int64_t timeStamp) {
             if (poses.size() <= 0) co_return; 
 
             // serialize vector<ApriltagPoses>
@@ -223,8 +223,8 @@ namespace ApriltagPose {
             this->m_pubUUID = UUID; 
         }
 
-        cobalt::promise<std::tuple<std::vector<int64_t>, std::vector<WorldPose::Pos2DwTag>>> receive() {
-            std::vector<WorldPose::Pos2DwTag> retPoseBuf; 
+        cobalt::promise<std::tuple<std::vector<int64_t>, std::vector<World::Pos2DwTag>>> receive() {
+            std::vector<World::Pos2DwTag> retPoseBuf; 
             std::vector<int64_t> retTimestamps;
 
             #ifdef FAIL_SILENT 
@@ -260,7 +260,7 @@ namespace ApriltagPose {
                     boost::algorithm::split(fieldStrs, poseString, [](char c) {return c == ':';}); // split fields based on :
 
                     // deserialize field strings into numbers 
-                    retPoseBuf.push_back(WorldPose::Pos2DwTag {
+                    retPoseBuf.push_back(World::Pos2DwTag {
                         .x = std::stod(std::move(fieldStrs[1])),
                         .y = std::stod(std::move(fieldStrs[2])),
                         .rot = std::stod(std::move(fieldStrs[3])),
@@ -273,7 +273,7 @@ namespace ApriltagPose {
             } catch(...) {};
             #endif
 
-            co_return std::tuple<std::vector<int64_t>, std::vector<WorldPose::Pos2DwTag>>(std::move(retTimestamps), std::move(retPoseBuf));
+            co_return std::tuple<std::vector<int64_t>, std::vector<World::Pos2DwTag>>(std::move(retTimestamps), std::move(retPoseBuf));
         }  
     }; // RedisReceiver
     */

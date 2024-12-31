@@ -19,7 +19,7 @@
 
 #include "ntcore/networktables/NetworkTableInstance.h"
 #include "program_options/value_semantic.hpp"
-#include "worldPose/World.cpp"
+#include "world/World.cpp"
 
 namespace cobalt = boost::cobalt;
 namespace asio = boost::asio; 
@@ -27,7 +27,7 @@ namespace PO = boost::program_options;
 
 cobalt::main co_main(int argc, char* argv[]) {  
     // cli argument parsing
-    std::string camerasTomlPath;
+    std::string configFolderPath;
     std::string ntRioIP;
     uint ntRioPort;
     std::string redisIP; 
@@ -37,10 +37,10 @@ cobalt::main co_main(int argc, char* argv[]) {
     PO::options_description cliOptions("Command Line Arguments");
     cliOptions.add_options()
         ("help", "show help message")
-        ("camera-config-file,f", 
-            PO::value<std::string>(&camerasTomlPath)
-            ->default_value("cameras.toml"), 
-            "path to cameras.toml, default cameras.toml")
+        ("config,c", 
+            PO::value<std::string>(&configFolderPath)
+            ->default_value("./"), 
+            "path to config folder, default current working directory")
         ("nt-ip,n", 
             PO::value<std::string>(&ntRioIP)
             ->default_value("127.0.0.1"), 
@@ -91,10 +91,13 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     
     Camera::PopulateGlobalCameraRegistraFromTOML(
-        Conf::LoadToml(camerasTomlPath)
+        Conf::LoadToml(fmt::format("{}/cameras.toml", configFolderPath))
+    );
+    World::Field::TOMLReadFieldConfig(
+        Conf::LoadToml(fmt::format("{}/field_config.toml", configFolderPath))
     );
 
-    WorldPose::World robotTracking; 
+    World::RobotPose robotTracking; 
        
     // signal handlers
     std::signal(SIGINT, [](int i){ f_exit = true; }); 

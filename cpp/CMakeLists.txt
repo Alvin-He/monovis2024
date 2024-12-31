@@ -48,6 +48,8 @@ add_library(boost_chrono STATIC IMPORTED)
 set_property(TARGET boost_chrono PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_chrono.a)
 add_library(boost_filesystem STATIC IMPORTED)
 set_property(TARGET boost_filesystem PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_filesystem.a)
+add_library(boost_json STATIC IMPORTED)
+set_property(TARGET boost_json PROPERTY IMPORTED_LOCATION ${Boost_LIBRARY_DIRS}/libboost_json.a)
 
 add_library(cuAprilTags STATIC IMPORTED)
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
@@ -95,7 +97,7 @@ target_link_libraries(apriltag_service
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
-	# PRIVATE ceres
+	PRIVATE boost_json
 )
 
 if(CUDAToolkit_FOUND) 
@@ -119,6 +121,7 @@ target_link_libraries(pose_service
 	PRIVATE Eigen3::Eigen
 	PRIVATE ntcore
 	PRIVATE ${OPENSSL_LIBRARIES}
+	PRIVATE boost_json
 )
 
 add_executable(foo src/foo.cpp)
@@ -151,6 +154,7 @@ target_link_libraries(foo
 # 	PRIVATE Eigen3::Eigen
 # 	PRIVATE ntcore
 # 	PRIVATE ${OPENSSL_LIBRARIES}
+# 	PRIVATE boost_json
 # )
 
 file(GLOB calib_srcs interactive_calib/*.cpp)
