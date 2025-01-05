@@ -3,15 +3,18 @@
 #include "helpers.cpp"
 #include "TypeDefs.cpp"
 #include "apriltag/Estimator.ipp"
+#include <cmath>
 #include <vector>
 #include "Field.cpp"
 
 
 namespace World::Solvers { // Solvers
     std::pair<double, double> CamRelativeToAbsoulote(double cx, double cy, double tx, double ty, double tYaw) {
-        double theta = h::NormalizeAngle(180.0 - tYaw); 
-        auto cords = h::rotatePoint(cx, cy, theta); 
-        return {tx - cords[0], ty - cords[1]}; 
+        double theta = h::NormalizeAngle(tYaw); 
+
+        auto [x, y] = h::rotatePoint(cx, cy, theta); 
+
+        return {tx + x, ty + y}; 
     } // CamRelativeToAbsoulote
 
 
@@ -23,13 +26,13 @@ namespace World::Solvers { // Solvers
 
         double yaw; 
         
-        yaw = -(*res.camToTagRvec[1]); 
-        yaw += res.cameraInfo->cameraPos[3] - tag.yaw; 
-        yaw = 180.0 - yaw; 
+        yaw = res.camToTagRvec(1) - res.cameraInfo->cameraPos[3];
+        yaw = tag.yaw + yaw; 
+        yaw = 180.0 + yaw; // adjust for opencv vs wpilib roatation cordinate systems
         yaw = h::NormalizeAngle(yaw);
 
         double camX = *res.camToTagTvec[2] - res.cameraInfo->cameraPos[0]; // camera parallel/z is same as world x for horzontally mounted camera
-        double camY = *res.camToTagTvec[0] - res.cameraInfo->cameraPos[1]; // camera through/x is same as world y
+        double camY = -*res.camToTagTvec[0] - res.cameraInfo->cameraPos[1]; // camera through/x is same as world y
 
         auto robotCords = CamRelativeToAbsoulote(camX, camY, tag.x, tag.y, tag.yaw); 
 
