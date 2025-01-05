@@ -1,5 +1,7 @@
 #pragma once
 #include "fmt/include/fmt/std.h"
+#include <array>
+#include <cmath>
 #include <numeric>
 #include <opencv4/opencv2/opencv.hpp>
 #include <boost/cobalt.hpp>
@@ -85,11 +87,15 @@ double average(const vector_d& data) {
 }
 
 std::array<double, 2> rotatePoint(double x, double y, double theta) {
+    // origional point -> polar cords -> add theta to the polar cords -> convert back to normal cords for res
     theta = theta * DEG2RAD_RATIO;
-    double r1 = std::sqrt(std::pow(x, 2) + std::pow(y, 2)); 
-    double xp1 = r1*std::cos(std::atan(y/x) + theta); 
-    double yp1 = r1*std::sin(std::atan(y/x) + theta); 
-    return std::array<double, 2> {xp1, yp1}; 
+    double h = std::sqrt(x*x + y*y);
+    double a = std::atan(y/x);
+    double p = a + theta;
+    if (x < 0) p -= CV_PI;
+    double fX = h * std::cos(p);
+    double fY = h * std::sin(p);
+    return {fX, fY};
 }  
 
 cv::Mat rad2deg(cv::Mat src) {
