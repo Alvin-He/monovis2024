@@ -4,6 +4,7 @@
 
 // #define DEBUG true
 // #define GUI true
+// #define SIM_BUILD true
 #define FAIL_SILENT true
 
 #define BOOST_THREAD_VERSION 5

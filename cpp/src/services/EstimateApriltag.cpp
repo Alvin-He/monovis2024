@@ -55,8 +55,7 @@ cobalt::main co_main(int argc, char* argv[]) {
             ->default_value("./"), 
             "path to config folder, default current working directory")
         ("camera-uuid,u", 
-            PO::value<std::string>(&UUID)
-            ->required(),
+            PO::value<std::string>(&UUID),
             "cameras UUID to use, this uuid must match the uuids provided by camera-config-file")
         ("ip,s", 
             PO::value<std::string>(&serverIP),
@@ -120,17 +119,15 @@ cobalt::main co_main(int argc, char* argv[]) {
     if (cdi == Camera::GlobalCameraRegistra.end()) throw std::runtime_error("provided uuid isn't found in cameras.toml");
     auto cameraData = cdi->second;    
 
+    #ifndef SIM_BUILD
     // bootstrap camera
     cv::VideoCapture cap{cameraData->id}; 
-
-    Camera::AdjustCameraDataAndCapture(cameraData, cap);     
-    Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData->calibratedAspectRatio, K::PROC_FRAME_SIZE);
+    Camera::AdjustCameraCaptureToNewImageSize(cameraData, cap);  
 
     Camera::FrameGenerator cameraReader {cap};
-    // for (auto& buf : frameBufs) {
-    //     cap.read(buf);
-    // }
-    // cameraRead(cap, readReq, readFinished).detach(); 
+    #endif
+
+    Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData->calibratedAspectRatio, K::PROC_FRAME_SIZE);
 
     fmt::println("camera {} initiated", cameraData->id);
 
@@ -160,13 +157,17 @@ cobalt::main co_main(int argc, char* argv[]) {
         #ifdef DEBUG
         auto start = std::chrono::high_resolution_clock::now();
         #endif 
-        // cv::Mat frame; 
-        // if (auto ret = co_await Network::ReadFrame("127.0.0.1", "8081")) {
-        //     frame = ret.value(); 
-        // } else {
-        //     continue;
-        // }
+
+        #ifdef SIM_BUILD 
+        cv::Mat frame;
+        if (auto ret = co_await Network::ReadFrame("127.0.0.1", "8081")) {
+            frame = ret.value(); 
+        } else {
+            continue;
+        }
+        #else
         cv::Mat frame = co_await cameraReader.PromiseRead();
+        #endif
         // cv::Mat frame = cv::imread("/mnt/1ECC5E47CC5E18FB/Users/alh/Desktop/monovis2024/frontend/My project/testImg1.png");
 
         // cv::Mat frame = co_await getFrame();
@@ -185,13 +186,13 @@ cobalt::main co_main(int argc, char* argv[]) {
         // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
         // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         
-        #ifdef DEBUG 
-        for(auto& esti : res) {
-            auto lastPose = World::Solvers::RobotPoseFromEstimationResult(esti); 
-            fmt::print("Tag {}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
-                lastPose.x, lastPose.y, lastPose.rot);
-        }
-        #endif
+        // #ifdef DEBUG 
+        // for(auto& esti : res) {
+        //     auto lastPose = World::Solvers::RobotPoseFromEstimationResult(esti); 
+        //     fmt::print("Tag {}, x {:.2f}, y {:.2f}, r {:.2f}\t", lastPose.id, 
+        //         lastPose.x, lastPose.y, lastPose.rot);
+        // }
+        // #endif
 
         // fmt::print("\tESTIMATE: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
 
@@ -218,7 +219,7 @@ cobalt::main co_main(int argc, char* argv[]) {
     // exit handling 
     fmt::println("Exiting..."); 
 
-    cap.release(); 
+    // cap.release(); 
     #ifdef GUI
     cv::destroyAllWindows(); 
     #endif
