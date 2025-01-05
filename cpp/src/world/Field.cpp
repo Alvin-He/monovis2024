@@ -65,7 +65,7 @@ namespace Field {
                     .x = translationObj.at("x").as_double() * 100,
                     .y = translationObj.at("y").as_double() * 100,
                     .z = translationObj.at("z").as_double() * 100,
-                    .yaw = h::rad2deg(Eigen::AngleAxisd(quaternion).angle())
+                    .yaw = h::NormalizeAngle(h::rad2deg(quaternion.normalized().toRotationMatrix().eulerAngles(0, 1, 2)[2]))
                 });
             }
 
