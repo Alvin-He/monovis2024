@@ -39,8 +39,8 @@ namespace RobotPose {
         {}
         cobalt::detached publish(World::Pos2D pose, int64_t timestamp) {
             // roboPosTable->GetIntegerTopic("ts");
-            xTopic.Set(pose.x);
-            yTopic.Set(pose.y);
+            xTopic.Set(pose.x/100.0); // cm to meters
+            yTopic.Set(pose.y/100.0); // cm to meters
             rotTopic.Set(pose.rot);
             tsTopic.Set(timestamp);
             co_return;
