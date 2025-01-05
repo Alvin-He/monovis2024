@@ -81,11 +81,7 @@ namespace ApriltagPose {
                     pose.camToTagRvec(0), pose.camToTagRvec(1), pose.camToTagRvec(2)
                 };
 
-                fmt::println("tvec: {}, {}, {}", pose.camToTagTvec(0), pose.camToTagTvec(1), pose.camToTagTvec(2));
-                fmt::println("rvec: {}, {}, {}", pose.camToTagRvec(0), pose.camToTagRvec(1), pose.camToTagRvec(2));
-
                 // data upload
-                tab->PutNumber("tagId", pose.id);
                 tab->PutNumberArray("tvec", TvecData);
                 tab->PutNumberArray("rvec", RvecData);
                 tab->PutNumber("ts", timeStamp);
