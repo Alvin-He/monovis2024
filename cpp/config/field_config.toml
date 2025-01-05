@@ -46,32 +46,32 @@
     #   r = 0 
 
 
-    # 102 class room overrides
-    [override.6] # door side wall fixed tags
-        enabled = true
-        x = 185
-        y = 0
-        z = 115
-        r = 90 
+    # # 102 class room overrides
+    # [override.6] # door side wall fixed tags
+    #     enabled = true
+    #     x = 185
+    #     y = 0
+    #     z = 115
+    #     r = 90 
 
-    [override.3] # door side wall fixed tags
-        enabled = true
-        x = 318
-        y = 0
-        z = 115
-        r = 90
+    # [override.3] # door side wall fixed tags
+    #     enabled = true
+    #     x = 318
+    #     y = 0
+    #     z = 115
+    #     r = 90
     
 
-    [override.4] # window wall fixed tags
-        enabled = true
-        x = 0
-        y = 211
-        z = 111.5
-        r = 0 
+    # [override.4] # window wall fixed tags
+    #     enabled = true
+    #     x = 0
+    #     y = 211
+    #     z = 111.5
+    #     r = 0 
 
-    [override.5] # window wall fixed tags
-        enabled = true
-        x = 0
-        y = 317.5
-        z = 88
-        r = 0
+    # [override.5] # window wall fixed tags
+    #     enabled = true
+    #     x = 0
+    #     y = 317.5
+    #     z = 88
+    #     r = 0

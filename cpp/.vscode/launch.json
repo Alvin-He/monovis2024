@@ -45,7 +45,7 @@
             "type": "gdb",
             "request": "launch",
             "target": "${workspaceFolder}/build/artifacts/apriltag_service",
-            "arguments": "-c 90FOV",
+            "arguments": "-u Unity",
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/config",
         },

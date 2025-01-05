@@ -24,6 +24,14 @@
 
 # CONTENT BEGIN
 
+[Unity]
+    calibration_file = "unity_main.xml"
+    device_id = -1
+    x = 0
+    y = 0
+    z = 0
+    r = 0
+
 [90FOV_Short]
     calibration_file = "90_FOVshort_3.xml"
     device_id = 2 
