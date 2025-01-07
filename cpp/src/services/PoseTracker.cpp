@@ -14,6 +14,7 @@
 #include "network/RobotPose.cpp"
 #include "network/ApriltagPose.cpp"
 #include "network/network_time.cpp"
+#include "network/TagLocation.cpp"
 #include "camera/CameraData.cpp"
 #include "conf/parser.cpp"
 
@@ -85,6 +86,8 @@ cobalt::main co_main(int argc, char* argv[]) {
     
     std::unique_ptr<Network::RobotPose::Publisher> roboPosPublisher = std::make_unique<Network::RobotPose::NTPublisher>("monovis-pose-service"); 
 
+    Network::TagLocation::NTPublisher tagsPublisher {};
+
     std::unique_ptr<Network::ApriltagPose::Receiver> estiInfoReceiver; 
     if (useNTForReceive) estiInfoReceiver = std::make_unique<Network::ApriltagPose::NTReceiver>();
     // else estiInfoReceiver = std::make_unique<Network::ApriltagPose::RedisReceiver>(UUID);
@@ -119,7 +122,9 @@ cobalt::main co_main(int argc, char* argv[]) {
             robotTracking.Update(validPackets);
             auto robotGlobalPose = robotTracking.GetRobotPose();
             roboPosPublisher->publish(robotGlobalPose, avgTs); 
-    
+            +tagsPublisher.publish(robotTracking.GetTransformationToAllTags()); 
+
+
             #ifdef DEBUG 
             fmt::println("UPDATE: X: {}, Y: {}, R: {}", robotGlobalPose.x, robotGlobalPose.y, robotGlobalPose.rot);
             #endif

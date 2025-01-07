@@ -21,6 +21,7 @@ namespace World
 
     struct Group {
         Pos2D cord; 
+        std::vector<Pos2DwTag> tags;
         int count; // used to determine the best cord
     }; 
 

@@ -4,6 +4,7 @@
 #include "TypeDefs.cpp"
 #include "apriltag/Estimator.ipp"
 #include <cmath>
+#include <utility>
 #include <vector>
 #include "Field.cpp"
 
@@ -39,14 +40,14 @@ namespace World::Solvers { // Solvers
         return Pos2DwTag {.x = robotCords.first, .y = robotCords.second, .rot = yaw, .id = res.id};
     }
 
-    std::vector<Group> GroupCords(const std::vector<Apriltag::EstimationResult>& cords, double limitRadiCM = 20) {    
+    std::vector<Group> GroupCords(const std::vector<Apriltag::EstimationResult>& cords, double limitRadiCM = 50) {    
         std::vector<Group> groups; 
 
         // groups.emplace_back(cords[0], 1); // initialize with first cordinate 
         int totalNumOfCords = cords.size(); 
         for (int i = 0; i < totalNumOfCords; i++) {
             int currentNumOfGroups = groups.size();
-            const Pos2DwTag& current = RobotPoseFromEstimationResult(cords[i]); 
+            Pos2DwTag current = RobotPoseFromEstimationResult(cords[i]); 
 
             // calculate distance from current cord to all know groups 
             std::vector<double> distances;
@@ -68,6 +69,7 @@ namespace World::Solvers { // Solvers
                     g.cord.y = (g.cord.y + current.y)/2;
                     g.cord.rot = (g.cord.rot + current.rot)/2; // average yaw
                     g.count += 1; // increment count
+                    g.tags.push_back(std::move(current)); // add the current tag to the list of good tags
 
                     isNewGroup = false; //unmark makeNewGroup
                     break;
@@ -75,14 +77,19 @@ namespace World::Solvers { // Solvers
             }
 
             if (isNewGroup) { // make new group if needed
-                groups.emplace_back(current, 1); 
+                groups.emplace_back(Group {
+                    .cord = Pos2D(current.x, current.y, current.rot), 
+                    .tags = std::vector<Pos2DwTag>{std::move(current)}, 
+                    .count = 1}
+                );
                 continue; 
             }
         }
         return std::move(groups); 
     }
 
-    Pos2D FindBestCord(const std::vector<Group>& groups) {
+    // Finds the Group with the best score, returns the index to that group, the group can be accessed with groups[index]
+    int FindBestGroup(const std::vector<Group>& groups) {
         int bestResIndex = 0; 
         int lastBestScore = 0;
         int numOfGroups = groups.size();  
@@ -93,7 +100,7 @@ namespace World::Solvers { // Solvers
                 lastBestScore = numTagsInGroup; 
             } // otherwise skip
         }
-        return groups[bestResIndex].cord; 
+        return bestResIndex; 
     }
 
     double FindBestYaw(const std::vector<Pos2D>& cords) {
