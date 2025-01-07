@@ -1,80 +1,61 @@
 {
     "configurations": [
-
-
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "launch calibrate",
+            "target": "${workspaceFolder}/build/artifacts/calib",
+            "cwd": "${workspaceRoot}/",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "launch world test",
+            "target": "${workspaceFolder}/build/artifacts/test_world_update",
+            "cwd": "${workspaceRoot}/config",
+            "valuesFormatting": "parseText"
+        },
         {
             "name": "(gdb) Core dump",
-            "type": "cppdbg",
+            "type": "gdb",
             "request": "launch",
-            "program": "${input:selectProgram}",
-            "coreDumpPath": "${input:coreDumpFileName}",
-            "args": [],
+            "target": "${input:selectProgram}",
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ]
         },
-
         {
-            "name": "(gdb) Launch serverAsync",
-            "type": "cppdbg",
+            "name": "(gdb) Launch service pose",
+            "type": "gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/serverAsync",
-            "args": [],
+            "target": "${workspaceFolder}/build/artifacts/pose_service",
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ]
+            "cwd": "${workspaceFolder}/config",
+        },
+        {
+            "name": "(gdb) Launch redis_test",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/build/artifacts/redis_test",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/config",
+        },
+        {
+            "name": "(gdb) Launch service apriltag",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/build/artifacts/apriltag_service",
+            "arguments": "-u Unity",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/config",
         },
         {
             "name": "(gdb) Launch prog",
-            "type": "cppdbg",
+            "type": "gdb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/prog",
-            "args": [],
+            "target": "${workspaceFolder}/build/artifacts/prog",
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ]
+            "cwd": "${workspaceFolder}/config",
         }
     ],
     "inputs": [
@@ -84,7 +65,7 @@
             "command": "extension.commandvariable.file.pickFile", 
             
             "args": {
-                "description": "Pick a program file",
+                "description": "Pick a target program file",
                 "include": "*",
                 "fromFolder": {
                     "predefined": ["${workspaceFolder}/build"]

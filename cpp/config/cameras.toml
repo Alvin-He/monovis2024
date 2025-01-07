@@ -1,0 +1,49 @@
+# Jump to line 25 to skip this documentation section
+#
+# This file defines all the cameras, their calibration files and mounting positions 
+# FORMAT:
+#
+# [<camera uuid>] #< string -- uuid of camera, doesn't matter what it is, as long as it's unique
+#     calibration_file = "./path" #< string - .xml path -- path to calibration results xml file, relative paths based to /config folder
+#     device_id = 0 #< int -- device id of camera (aka camera id), this is different from the uuid
+#     x = 0 #< double - centimeters -- x pos of camera relative to robot center
+#     y = 0 #< double - centimeters -- y pos of camera relative to robot center
+#     z = 0 #< double - centimeters -- z pos (height) of camera relative to robot center
+#     r = 0 #< double - degrees -- camera rotation around the Z axis relative to robot center
+#
+#
+# DEFAULT/TEMPlATE, copy this to make a new camera:
+
+# [uuid]
+#     calibration_file = ""
+#     device_id = 0 
+#     x =  0
+#     y =  0
+#     z =  0
+#     r =  0
+
+# CONTENT BEGIN
+
+[Unity]
+    calibration_file = "unity_main.xml"
+    device_id = -1
+    x = 0
+    y = 0
+    z = 0
+    r = 0
+
+[90FOV_Short]
+    calibration_file = "90_FOVshort_3.xml"
+    device_id = 2 
+    x =  0
+    y =  0
+    z =  0
+    r =  0
+
+[90FOV]
+    calibration_file = "90FOV_3.xml"
+    device_id = 0
+    x =  0
+    y =  0
+    z =  0
+    r =  0

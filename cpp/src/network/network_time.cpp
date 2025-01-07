@@ -21,7 +21,6 @@ namespace NetworkTime {
     };
 
     // returns the current server time
-    // can be used in threads, serverTimeOffset is not procted by a lock, but it donesn't need it
     int64_t Now() {
         return nt::Now() + NetworkTime::serverTimeOffset_us;
     }
