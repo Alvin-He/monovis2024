@@ -14,7 +14,7 @@
 
     # file path to the FIRST Official Apriltags Json files, they can normally be found in here:
     # https://github.com/wpilibsuite/allwpilib/tree/main/apriltag/src/main/native/resources/edu/wpi/first/apriltag
-    game_apriltag_json_file = "2024-crescendo.json"
+    game_apriltag_json_file = "2025-reefscape.json"
 
     # field dimensions, values defined here will take precedence than the field dimensions defined in the json file 
     # int, centimeter(CM), -1 --> use the json provided values / default values
