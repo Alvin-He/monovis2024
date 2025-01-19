@@ -31,3 +31,13 @@ untill this issue gets resolved https://github.com/boostorg/redis/issues/211
 
 for solvePnp, cv::SOLVEPNP_SQPNP is significantly faster 
 so most of the performance pain points is on detection actually 
+
+
+
+## Architecture
+
+service based
+
+EstimateApriltag: Estimates and returns all the corners in turns of frame positions
+
+PoseTracker: Takes all the corners, solvepnp it into poses then combine all the poses into a global parameter

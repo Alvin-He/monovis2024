@@ -1,7 +1,15 @@
 #pragma once
 
+/////////////
+// DEFUNCT //
+/////////////
 
 #ifdef HAS_CUDA
+
+// IMPORTANT //
+#error "NvidiaCuApriltagsEstimator is still in an old monovis architecture and currently have a broken implenmentation. Please DO NOT USE and use OpenCVArucoEstimator instead!"
+//////////////
+
 
 #include "common.cpp"
 #include "Estimator.ipp"

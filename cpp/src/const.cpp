@@ -14,7 +14,7 @@ int NT_UPDATES_PER_SECOND = 11;
 
 uint APRILTAG_CACHE_COUNT = 50;
 auto POSE_TIME_CONSIDERATION = boost::chrono::milliseconds(100).count(); 
-auto POSE_LOOP_UPDATE_INTERVAL = 90ms; 
+auto POSE_LOOP_UPDATE_INTERVAL = 50ms; 
 
 cv::Size2d PROC_FRAME_SIZE (640, 480); 
 };

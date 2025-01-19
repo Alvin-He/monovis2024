@@ -1,14 +1,15 @@
 #pragma once
 #include "common.cpp"
+#include <array>
+#include <opencv2/core/types.hpp>
 #include <vector>
 #include "camera/CameraData.cpp"
 
 namespace Apriltag {
     struct EstimationResult {
         std::shared_ptr<Camera::CameraData> cameraInfo; 
-        int id; 
-        cv::Mat1d camToTagRvec; 
-        cv::Mat1d camToTagTvec; 
+        std::vector<int> ids;
+        std::vector<std::vector<cv::Point2f>> corners; 
     };
 
     class Estimator {
@@ -16,6 +17,6 @@ namespace Apriltag {
         Estimator() {}
         virtual ~Estimator() {}; 
 
-        virtual std::vector<EstimationResult> Detect(cv::Mat image) = 0;
+        virtual EstimationResult Detect(cv::Mat image) = 0;
     }; 
 }

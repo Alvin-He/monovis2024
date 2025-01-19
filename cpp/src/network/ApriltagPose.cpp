@@ -12,14 +12,20 @@
 #include "ntcore/networktables/NetworkTable.h"
 #include "ntcore/networktables/NetworkTableInstance.h"
 #include "ntcore/networktables/DoubleTopic.h"
+#include "ntcore/networktables/IntegerArrayTopic.h"
+#include "ntcore/networktables/DoubleArrayTopic.h"
+#include "ntcore/networktables/IntegerTopic.h"
 #include "redis.cpp"
 #include "world/TypeDefs.cpp"
 #include "camera/CameraData.cpp"
+#include <cstdint>
 #include <fmt/include/fmt/compile.h>
 #include <map>
 #include <memory>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/persistence.hpp>
+#include <opencv2/core/types.hpp>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -32,14 +38,16 @@ namespace ApriltagPose {
     static std::string kNTVisionTable = "Vision";
     static std::string KNTCamerasTable = "Vision/Cameras";
 
+    // base interface for publishing an EstimationResult onto Network 
     class Publisher { // interface
         public:
         Publisher() = default;
         virtual ~Publisher() = default; 
 
-        virtual cobalt::promise<void> publish(const std::vector<Apriltag::EstimationResult>& estimations, const int64_t& timeStamp) = 0;
+        virtual cobalt::promise<void> publish(const Apriltag::EstimationResult& estimations, const int64_t& timeStamp) = 0;
     }; // Publisher interface
 
+    // base interface for receiving an EstimationResult from Network 
     class Receiver { // interface
         public: 
         Receiver() = default;
@@ -55,45 +63,47 @@ namespace ApriltagPose {
         {
             auto cameras = nt::NetworkTableInstance::GetDefault().GetTable(KNTCamerasTable); 
             m_tThisCamera = cameras->GetSubTable(m_UUID);
+            m_idsPublisher = m_tThisCamera->GetIntegerArrayTopic("ids").Publish();
+            m_cornersPublisher = m_tThisCamera->GetDoubleArrayTopic("corners").Publish();
+            m_tsPublisher = m_tThisCamera->GetIntegerTopic("ts").Publish();
         }
 
-        cobalt::promise<void> publish(const std::vector<Apriltag::EstimationResult>& estimations, const int64_t& timeStamp) {
-            if (estimations.size() <= 0) co_return; 
+        cobalt::promise<void> publish(const Apriltag::EstimationResult& estimations, const int64_t& timeStamp) {
+            int count = estimations.ids.size();
+            if (count <= 0) co_return; 
 
-            for (auto &pose : estimations) {
-                // cache look up to improve performance
-                auto tabPos = m_tagIDTableCache.find(pose.id);
+            // type cast to NT sendable types
+            std::vector<int64_t> ids {estimations.ids.begin(), estimations.ids.end()};
+            
+            std::vector<double> corners; corners.reserve(count * 8);
+            for (auto& tagCorners : estimations.corners) {
+                auto pos = corners.end();
+                corners.emplace(pos + 0, tagCorners[0].x);
+                corners.emplace(pos + 1, tagCorners[0].y);
+                corners.emplace(pos + 2, tagCorners[1].x);
+                corners.emplace(pos + 3, tagCorners[1].y);
+                corners.emplace(pos + 4, tagCorners[2].x);
+                corners.emplace(pos + 5, tagCorners[2].y);
+                corners.emplace(pos + 6, tagCorners[3].x);
+                corners.emplace(pos + 7, tagCorners[3].y);
 
-                std::shared_ptr<nt::NetworkTable> tab;
-                if (tabPos == m_tagIDTableCache.end()) {
-                    tab = m_tThisCamera->GetSubTable(std::to_string(pose.id));
-                    m_tagIDTableCache.emplace(pose.id, tab); 
-                } else {
-                    tab = tabPos->second; 
-                }
-                
-                // opencv mat serialization 
-                std::array<double, 3> TvecData {
-                    pose.camToTagTvec(0), pose.camToTagTvec(1), pose.camToTagTvec(2)
-                };  
+            }
 
-                std::array<double, 3> RvecData {
-                    pose.camToTagRvec(0), pose.camToTagRvec(1), pose.camToTagRvec(2)
-                };
+            // data upload
+            m_idsPublisher.Set(ids); 
+            m_cornersPublisher.Set(corners); 
+            m_tsPublisher.Set(timeStamp); 
 
-                // data upload
-                tab->PutNumberArray("tvec", TvecData);
-                tab->PutNumberArray("rvec", RvecData);
-                tab->PutNumber("ts", timeStamp);
-                tab->PutBoolean("isUsed", false);
-            };
             co_return;
         };
         private: 
             const std::string m_UUID;
 
             std::shared_ptr<nt::NetworkTable> m_tThisCamera = nullptr; 
-            std::map<double, std::shared_ptr<nt::NetworkTable>> m_tagIDTableCache = {}; 
+            nt::IntegerArrayPublisher m_idsPublisher;
+            nt::DoubleArrayPublisher m_cornersPublisher;
+            nt::IntegerPublisher m_tsPublisher; 
+            
     }; // NTPublisher
 
 
@@ -103,30 +113,16 @@ namespace ApriltagPose {
             this->m_table = nt::NetworkTableInstance::GetDefault().GetTable(KNTCamerasTable);
 
             m_table->AddSubTableListener([&] (nt::NetworkTable *, std::basic_string_view<char>camName_unowned, std::shared_ptr<nt::NetworkTable> cameraTable){
+                if (camName_unowned.length() <= 0) return;
                 std::string camName {camName_unowned}; // copy camName to memory owned by us
-                if (camName.length() <= 0) return;
 
-                cameraTable->AddSubTableListener( //explicit move needed for lambda capture cuz lifetime issues with call backs
-                    [&, camName = std::move(camName), cameraTable = std::move(cameraTable)]
-                        (nt::NetworkTable *, std::basic_string_view<char> tagIDstr, std::shared_ptr<nt::NetworkTable> tagTable)  
-                    {
-                        int tagID;
-                        try {
-                            if (tagIDstr.length() <= 0) return;
-                            tagID = std::stoi(std::string(tagIDstr)); 
-                        } catch (...) {
-                            return; // exit if we can't parse the tag ID
-                        }
-
-                        // create res table
-                        m_tagResults.emplace_back(TagResultTableInfo {
-                            .estimation = std::move(tagTable),
-                            .camera = std::move(cameraTable),
-                            .uuid = std::move(camName),
-                            .tag = std::move(tagID)
-                        });
-                    }
-                );
+                m_cameras.emplace_back(CameraTableInfo {
+                    .camera = cameraTable, 
+                    .uuid = std::move(camName),
+                    .idsSub = cameraTable->GetIntegerArrayTopic("ids").Subscribe({}), 
+                    .cornersSub = cameraTable->GetDoubleArrayTopic("corners").Subscribe({}),
+                    .tsSub = cameraTable->GetIntegerTopic("ts").Subscribe(0)
+                });
             }); 
         }
         
@@ -134,51 +130,51 @@ namespace ApriltagPose {
             std::vector<int64_t> retTimestamps; 
             std::vector<Apriltag::EstimationResult> retResults;             
 
-            for (auto& resultInfo : m_tagResults) {
-                auto& tagTab = resultInfo.estimation;
-                bool used = tagTab->GetBoolean("isUsed", false); 
-                if (used) continue;
-                tagTab->PutBoolean("isUsed", true); 
-
-                auto rawTvec = tagTab->GetNumberArray("tvec", {});
-                if (rawTvec.size() != 3) continue;
-                cv::Mat1d tvec {rawTvec[0], rawTvec[1], rawTvec[2]}; 
-
-                auto rawRvec = tagTab->GetNumberArray("rvec", {}); 
-                if (rawRvec.size() != 3) continue;
-                cv::Mat1d rvec {rawRvec[0], rawRvec[1], rawRvec[2]}; 
-
-                auto camDataPos = Camera::GlobalCameraRegistra.find(resultInfo.uuid); 
-                if (camDataPos == Camera::GlobalCameraRegistra.end()) continue;
-                auto camData = camDataPos->second; 
+            for (auto& camera : m_cameras) {
+                auto ts = camera.tsSub.Get();
+                if (ts == camera.lastTs) continue; // already processed this frame data
+                camera.lastTs = ts;
+                retTimestamps.push_back(std::move(ts)); 
 
 
-                Apriltag::EstimationResult res {
-                    .cameraInfo = camData,
-                    .id = resultInfo.tag,
-                    .camToTagRvec = rvec,
-                    .camToTagTvec = tvec
-                };
+                //type cast to processable types
+                auto _ids = camera.idsSub.Get(); 
+                std::vector<int> ids {_ids.begin(), _ids.end()};
+                
+                auto _corners = camera.cornersSub.Get(); auto _cornersCount = _corners.size();
+                std::vector<std::vector<cv::Point2f>> corners;
+                for (int i = 0; i < _cornersCount; i+=8) {
+                    corners.emplace_back(std::vector<cv::Point2f> { // load all corners of a tag into vector as cv::Point2f
+                        cv::Point2f(_corners[i + 0], _corners[i + 1]),
+                        cv::Point2f(_corners[i + 2], _corners[i + 3]),
+                        cv::Point2f(_corners[i + 4], _corners[i + 5]), 
+                        cv::Point2f(_corners[i + 6], _corners[i + 7]), 
+                    });
+                }
 
-                int64_t ts = tagTab->GetNumber("ts", 0);
 
-                retResults.emplace_back(std::move(res));
-                retTimestamps.push_back(ts); 
+                retResults.emplace_back(Apriltag::EstimationResult {
+                    .cameraInfo = Camera::GlobalCameraRegistra[camera.uuid], 
+                    .ids = std::move(ids), 
+                    .corners = std::move(corners)
+                });
             }
 
             co_return {std::move(retTimestamps), std::move(retResults)};
         };
 
         private: 
-            struct TagResultTableInfo {
-                std::shared_ptr<nt::NetworkTable> estimation;
+            struct CameraTableInfo {
                 std::shared_ptr<nt::NetworkTable> camera;
                 std::string uuid;
-                int tag;
+                nt::IntegerArraySubscriber idsSub;
+                nt::DoubleArraySubscriber cornersSub;
+                nt::IntegerSubscriber tsSub; 
+                int64_t lastTs = 0;
             };
 
             std::shared_ptr<nt::NetworkTable> m_table; 
-            std::vector<TagResultTableInfo> m_tagResults;
+            std::vector<CameraTableInfo> m_cameras;
     }; // NTReceiver
 
     /** Redis module needs a redo to be compatiable with the new scheme, low priority tho

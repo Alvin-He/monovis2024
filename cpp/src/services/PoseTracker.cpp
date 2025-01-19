@@ -113,16 +113,17 @@ cobalt::main co_main(int argc, char* argv[]) {
     boost::asio::steady_timer timer {co_await cobalt::this_coro::executor};
     while (!f_exit)
     {   
-        timer.expires_from_now(K::POSE_LOOP_UPDATE_INTERVAL); 
+        timer.expires_after(K::POSE_LOOP_UPDATE_INTERVAL); 
 
         auto [timestamps, validPackets] = co_await estiInfoReceiver->receive();
 
         if (validPackets.size() > 0) {
             auto avgTs = h::average(timestamps); 
             robotTracking.Update(validPackets);
-            auto robotGlobalPose = robotTracking.GetRobotPose();
+            auto poseUpdateResult = robotTracking.GetLastResult();
+            auto robotGlobalPose = poseUpdateResult.robotFieldPose;
             roboPosPublisher->publish(robotGlobalPose, avgTs); 
-            +tagsPublisher.publish(robotTracking.GetTransformationToAllTags()); 
+            +tagsPublisher.publish(std::move(poseUpdateResult.tagPoses)); 
 
 
             #ifdef DEBUG 

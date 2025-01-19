@@ -84,12 +84,12 @@ cobalt::main co_main(int argc, char* argv[]) {
     APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMin = 5; 
     APRILTAG_DETECTOR_PARAMS.adaptiveThreshWinSizeMax = 5; 
     APRILTAG_DETECTOR_PARAMS.cornerRefinementMethod = cv::aruco::CORNER_REFINE_CONTOUR;
-    APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.5;
+    // APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.5;
     APRILTAG_DETECTOR_PARAMS.cornerRefinementWinSize = 10;
     // APRILTAG_DETECTOR_PARAMS.relativeCornerRefinmentWinSize = 0.7;
-    APRILTAG_DETECTOR_PARAMS.minCornerDistanceRate *= 0.05;
-    APRILTAG_DETECTOR_PARAMS.minMarkerDistanceRate *= 0.05; 
-    APRILTAG_DETECTOR_PARAMS.minMarkerPerimeterRate *= 0.05;
+    APRILTAG_DETECTOR_PARAMS.minCornerDistanceRate *= 0.1;
+    APRILTAG_DETECTOR_PARAMS.minMarkerDistanceRate *= 0.1; 
+    APRILTAG_DETECTOR_PARAMS.minMarkerPerimeterRate *= 0.1;
     // APRILTAG_DETECTOR_PARAMS.useAruco3Detection = true;
     // APRILTAG_DETECTOR_PARAMS.minSideLengthCanonicalImg = 13;    
 
@@ -129,7 +129,7 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     Camera::AdjustCameraDataForNewImageSize(cameraData, cameraData->calibratedAspectRatio, K::PROC_FRAME_SIZE);
 
-    fmt::println("camera {} initiated", cameraData->id);
+    fmt::println("camera {} with device id {} initialized", cameraData->uuid, cameraData->deviceID);
 
     // construct estimator
     Apriltag::OpenCVArucoEstimator estimator {cameraData, APRILTAG_DETECTOR_PARAMS};
@@ -182,7 +182,7 @@ cobalt::main co_main(int argc, char* argv[]) {
         // cv::undistort(frame, undistored, s_cameraData->matrix, s_cameraData->distCoeffs);
         // cv::imshow("undistored", undistored); 
 
-        std::vector<Apriltag::EstimationResult> res =  estimator.Detect(frame); //co_await estimator.PromiseDetect(frame); 
+        Apriltag::EstimationResult res =  estimator.Detect(frame); //co_await estimator.PromiseDetect(frame); 
         // Apriltag::AllEstimationResults res = estimator.Detect(frame); 
         // fmt::print("\tDETECT: {}", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start));
         

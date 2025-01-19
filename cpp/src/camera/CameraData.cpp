@@ -8,7 +8,6 @@
 #include <opencv4/opencv2/opencv.hpp>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <utility>
 #include "conf/parser.cpp"
 
@@ -16,8 +15,8 @@ namespace Camera
 {
     struct CameraData {
         // Any changes to this struct that affects parsing need to update conf/Parse_cameras_toml
-
-        int id = 0; 
+        std::string uuid; 
+        int deviceID = 0; 
         // int camToRobotPos{4} = {800,250,300, 0}, # anchored at bottom right of robot
         std::array<double, 4> cameraPos = {0,0,0, 270};
         // std::vector<std::vector<double>> matrix =
@@ -34,10 +33,28 @@ namespace Camera
             {-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398};
             // {{-0.18422303, 0.04338743, -0.0010019, 0.00080675, -0.00543398}};
         cv::Size2d calibratedAspectRatio = cv::Size2d(1280, 720);
+        cv::Size2d resizedTo = cv::Size2d(1280, 720);
     };
 
     // uuid, asosociated camera data
     static std::map<std::string, std::shared_ptr<CameraData>> GlobalCameraRegistra;
+
+    // adjust camera matrix for resized smaller image
+    void AdjustCameraDataForNewImageSize(std::shared_ptr<CameraData> cameraData, const cv::Size2d& originalFrameSize, cv::Size2d targetFrameSize) {
+        cameraData->matrix(0, 0) *= (targetFrameSize.width / originalFrameSize.width); // fx
+        cameraData->matrix(0, 2) *= (targetFrameSize.width / originalFrameSize.width); // cx
+        cameraData->matrix(1, 1) *= (targetFrameSize.height / originalFrameSize.height); // fy
+        cameraData->matrix(1, 2) *= (targetFrameSize.height / originalFrameSize.height); // cy
+
+        cameraData->resizedTo = targetFrameSize;
+    }
+
+    // Modifiys the capture aspect ratio to the calibrated aspect ratio and rescales the camera matrix for a desired frame size
+    void AdjustCameraCaptureToNewImageSize(std::shared_ptr<CameraData> cameraData, cv::VideoCapture& cap) {
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData->calibratedAspectRatio.width);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData->calibratedAspectRatio.height);       
+    }
+
 
     // deseralize camera calibration data from xml file
     CameraData LoadCalibDataFromXML(const std::string& filePath) {
@@ -62,7 +79,7 @@ namespace Camera
         
         auto res = LoadCalibDataFromXML(calibrationFile);
 
-        res.id = Conf::parse<int>(cameraDataTable, "device_id");
+        res.deviceID = Conf::parse<int>(cameraDataTable, "device_id");
         res.cameraPos = {
             Conf::parse<double>(cameraDataTable, "x"),
             Conf::parse<double>(cameraDataTable, "y"),
@@ -80,24 +97,12 @@ namespace Camera
             auto tab = *v.as_table();
             
             auto d = std::make_shared<CameraData>(ParseCameraData(tab));
+            d->uuid = std::move(std::string{uuid});
+
+            // reset the camera to the processing frame size
+            AdjustCameraDataForNewImageSize(d, d->calibratedAspectRatio, K::PROC_FRAME_SIZE); 
 
             GlobalCameraRegistra.insert_or_assign(std::string{uuid}, d); 
         }
-    }
-
-    // adjust camera matrix for resized smaller image
-    void AdjustCameraDataForNewImageSize(std::shared_ptr<CameraData> cameraData, const cv::Size2d& originalFrameSize, const cv::Size2d& targetFrameSize) {
-        cameraData->matrix(0, 0) *= (targetFrameSize.width / originalFrameSize.width); // fx
-        cameraData->matrix(0, 2) *= (targetFrameSize.width / originalFrameSize.width); // cx
-        cameraData->matrix(1, 1) *= (targetFrameSize.height / originalFrameSize.height); // fy
-        cameraData->matrix(1, 2) *= (targetFrameSize.height / originalFrameSize.height); // cy
-    }
-
-    // Modifiys the capture aspect ratio to the calibrated aspect ratio and rescales the camera matrix for a desired frame size
-    void AdjustCameraCaptureToNewImageSize(std::shared_ptr<CameraData> cameraData, cv::VideoCapture& cap) {
-        cap.set(cv::CAP_PROP_FRAME_WIDTH, cameraData->calibratedAspectRatio.width);
-        cap.set(cv::CAP_PROP_FRAME_HEIGHT, cameraData->calibratedAspectRatio.height);
-       
-        // cameraData.matrix = cv::getOptimalNewCameraMatrix(cameraData.matrix, cameraData.distCoeffs, cameraData.calibratedAspectRatio, -1, targetFrameSize);    
     }
 } // namespace Camera
