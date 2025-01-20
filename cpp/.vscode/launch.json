@@ -1,5 +1,6 @@
 {
     "configurations": [
+
         {
             "type": "gdb",
             "request": "launch",
@@ -29,6 +30,14 @@
             "type": "gdb",
             "request": "launch",
             "target": "${workspaceFolder}/build/artifacts/pose_service",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/config",
+        },
+        {
+            "name": "(gdb) Launch reef align",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/build/artifacts/reef_align",
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/config",
         },

@@ -140,6 +140,22 @@ target_link_libraries(foo
 	PRIVATE ${OPENSSL_LIBRARIES}
 )
 
+add_executable(reef_align src/services/ReefAlign.cpp)
+target_compile_options(reef_align 
+	PUBLIC "-fcoroutines")
+target_link_libraries(reef_align
+	PRIVATE boost_cobalt
+	PRIVATE boost_program_options
+	PRIVATE boost_thread
+	PRIVATE boost_chrono
+	PRIVATE ${OpenCV_LIBS}
+	PRIVATE Threads::Threads
+	PRIVATE boost_timer
+	PRIVATE Eigen3::Eigen
+	PRIVATE ntcore
+	PRIVATE ${OPENSSL_LIBRARIES}
+)
+
 # add_executable(test_world_update tests/apriltag.world.test.cpp) # currently broken
 # target_compile_options(test_world_update 
 # 	PUBLIC "-fcoroutines")
