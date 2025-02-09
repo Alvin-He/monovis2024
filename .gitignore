@@ -14,8 +14,6 @@ winBuild
 allwpilib
 bin/
 boost-1.85.0-cmake
-# temperorily not tracking front end
-frontend
 
 *.png
 *.log
