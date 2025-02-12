@@ -121,7 +121,7 @@ cobalt::main co_main(int argc, char* argv[]) {
 
     #ifndef SIM_BUILD
     // bootstrap camera
-    cv::VideoCapture cap{cameraData->id}; 
+    cv::VideoCapture cap{cameraData->deviceID}; 
     Camera::AdjustCameraCaptureToNewImageSize(cameraData, cap);  
 
     Camera::FrameGenerator cameraReader {cap};
